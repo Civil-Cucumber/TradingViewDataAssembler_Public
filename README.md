@@ -40,3 +40,15 @@ _Symbol | Side | Time of first entry | Avg entry price | Total entry stock amoun
 5. Open your trading journal **spreadsheet**, and paste the data in.
 
 <img src="https://user-images.githubusercontent.com/126332884/222283536-e9de50e1-a254-45f2-8704-f86ae649e646.png" width="600">
+
+## To consider:
+
+The trade infos are read out from the `Positions.csv` _(open positions)_, `History.csv` _(recent filled or cancelled orders)_ and `TradingJournal.csv` _(when order has been executed and at what price)_.
+
+The `TradingJournal.csv` is limited to 150 lines by default. 
+
+**However** there is a way to load more lines: select the "Trading Journal" tab in TradingView and scroll further down to load more entries to the list. Then export the TradingJournal.csv: it should now contain more lines!
+
+This can help to see swing trades that don't show up on your list after a couple of days anymore, since the tool only considers trades if they show up in the `History.csv` AND in `TradingJournal.csv`.
+
+The `History.csv` however is limited to max. 100 orders. There is unfortunately no way to load more, so information for orders that have been filled before is lost.
