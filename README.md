@@ -1,26 +1,24 @@
 # TradingViewDataAssembler
 
 This tool assembles paper trading data from TradingView into a readable csv format, to be able to create a Trading Journal in a spreadsheet.
+1 row = 1 trade of the same stock, until all bought stocks have been sold.
+
+**Columns:**
+
+_Symbol | Side | Time of first entry | Avg entry price | Total entry stock amount | Stop Loss | Price Target | Time of last exit | Avg exit price | Total exit stock amount | Amount of different entries | Amount of different exits_
 
 ## Setup:
-1. Open [tradingview.com/chart](tradingview.com/chart) (make sure your language is set to English!) and connect to **PaperTrading** if you aren't already.
-2. Click on the **Positions** tab and click on the 3 dots in the upper right corner, make sure all categories have a checkmark.
-3. Click on the **History** tab and click on the 3 dots in the upper right corner, make sure all categories have a checkmark.
-4. Click on the **Trading Journal** tab and click on the 3 dots in the upper right corner, make sure all categories have a checkmark.
-5. Click on **Paper Trading**, then `Export Data`.
-6. Select **Positions** and click `Export`.
-7. Select **History** and click `Export`.
-8. Select **Trading Journal** and click `Export`.
-9. Open **TradingViewDataAssembler**.
-10. Open **Explorer** (Win) / **Finder** (Mac).
-11. Copy the path to the folder to which you downloaded the 3 csv files before.
-12. Paste it into the `Folder` input field in **TradingViewDataAssembler**.
-13. Click the blue `-->` button, the assembled data is now in the clipboard!
-14. Open your trading journal **spreadsheet**, and paste the data in.
+1. Open [tradingview.com/chart](tradingview.com/chart) (make sure your language is set to English!) and connect to **PaperTrading**.
+2. Click on the **Positions** tab, then click on the 3 dots in the upper right corner, make sure all categories have a checkmark.
+3. Click on the **History** tab, then click on the 3 dots in the upper right corner, make sure all categories have a checkmark.
+4. Click on the **Trading Journal** tab, then click on the 3 dots in the upper right corner, make sure all categories have a checkmark.
+5. Open **TradingViewDataAssembler**.
+6. Open **Explorer** (Win) or **Finder** (Mac) and copy the path where you plan to save TradingView's Papertrading csv files to (e. g. `C:\Users\yourname\Downloads` (Win) or `/Users/yourname/Downloads` (Mac))
+7. Paste it into the `Folder` input field in **TradingViewDataAssembler**.
 
-## How to:
-1. Open [tradingview.com/chart](tradingview.com/chart) (make sure your language is set to English!) and connect to **PaperTrading** if you aren't already.
-2. Click on **Paper Trading**, then `Export Data`.
-3. Select **Positions** and click `Export`, select **History** and click `Export`, select **Trading Journal** and click `Export`.
-4. Open **TradingViewDataAssembler**, the assembled data is immediately in the clipboard!
+## How to use:
+1. Open [tradingview.com/chart](tradingview.com/chart) (make sure your language is set to English!) and connect to **PaperTrading**.
+2. Click on **Paper Trading** in the upper left, then `Export Data`.
+3. Select **Positions** and click `Export`, select **History** and click `Export`, select **Trading Journal** and click `Export`. If you didn't select your Downloads folder in step 6 above, move the downloaded csv files to the folder you defined there. 
+4. Open **TradingViewDataAssembler**: the data is automatically read out, combined and saved to your clipboard!
 5. Open your trading journal **spreadsheet**, and paste the data in.
