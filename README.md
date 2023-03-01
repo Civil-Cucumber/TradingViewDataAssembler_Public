@@ -8,6 +8,10 @@ This tool assembles paper trading data from TradingView into a readable csv form
 
 _Symbol | Side | Time of first entry | Avg entry price | Total entry stock amount | Stop Loss | Price Target | Time of last exit | Avg exit price | Total exit stock amount | Amount of different entries | Amount of different exits_
 
+## Download:
+
+[Version 1.0](https://github.com/Civil-Cucumber/TradingViewDataAssembler_Public/releases/tag/v1.0.0)
+
 ## Setup:
 1. Open [tradingview.com/chart](tradingview.com/chart) (make sure your language is set to English!) and connect to **PaperTrading**.
 2. Click on the **Positions** tab, then click on the 3 dots in the upper right corner, make sure all categories have a checkmark.
