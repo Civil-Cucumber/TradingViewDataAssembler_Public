@@ -1,4 +1,4 @@
-# TradingViewDataAssembler
+# TradingView Data Assembler
 
 This tool assembles paper trading data from TradingView into a readable csv format, to be able to create a Trading Journal in a spreadsheet.
 
