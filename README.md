@@ -10,7 +10,7 @@ _Symbol | Side | Time of first entry | Avg entry price | Total entry stock amoun
 
 ## Download:
 
-[Version 1.0](https://github.com/Civil-Cucumber/TradingViewDataAssembler_Public/releases/tag/v1.0.0)
+[Version 1.1](https://github.com/Civil-Cucumber/TradingViewDataAssembler_Public/releases/tag/v1.1.0)
 
 ## Setup:
 1. Open [tradingview.com/chart](tradingview.com/chart) (make sure your language is set to English!) and connect to **PaperTrading**.
