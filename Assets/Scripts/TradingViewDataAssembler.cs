@@ -20,6 +20,7 @@ public class TradingViewDataAssembler : MonoBehaviour
     {
         Market,
         Limit,
+        Stop,
         TakeProfit,
         StopLoss
     }
@@ -73,15 +74,15 @@ public class TradingViewDataAssembler : MonoBehaviour
         public float LastStopLoss => stopLosses.OrderByDescending(x => x.time).FirstOrDefault().price;
         public float LastPriceTarget => priceTargets.OrderByDescending(x => x.time).FirstOrDefault().price;
 
-        public int TotalEntryAmount => entries.Sum(x => x.amount);
-        public int TotalExitAmount => exits.Sum(x => x.amount);
+        public float TotalEntryAmount => entries.Sum(x => x.amount);
+        public float TotalExitAmount => exits.Sum(x => x.amount);
     }
 
     struct Order
     {
         public DateTime time;
         public float price;
-        public int amount;
+        public float amount;
         public int orderId;
     }
 
@@ -240,7 +241,7 @@ public class TradingViewDataAssembler : MonoBehaviour
             {
                 exitTradeString = "";
             }
-            sb.AppendLine($"{trade.symbol},{trade.side},{trade.StartTradeTime},{CapDecimalPlaces(trade.AvgEntryPrice, floatCulture)},{trade.TotalEntryAmount},{CapDecimalPlaces(trade.LastStopLoss, floatCulture)},{CapDecimalPlaces(trade.LastPriceTarget, floatCulture)},{exitTradeString},{CapDecimalPlaces(trade.AvgExitPrice, floatCulture)},{trade.TotalExitAmount},{trade.entries.Count},{trade.exits.Count}");
+            sb.AppendLine($"{trade.symbol},{trade.side},{trade.StartTradeTime},{CapDecimalPlaces(trade.AvgEntryPrice, floatCulture)},{FloatToString(trade.TotalEntryAmount, floatCulture)},{CapDecimalPlaces(trade.LastStopLoss, floatCulture)},{CapDecimalPlaces(trade.LastPriceTarget, floatCulture)},{exitTradeString},{CapDecimalPlaces(trade.AvgExitPrice, floatCulture)},{FloatToString(trade.TotalExitAmount, floatCulture)},{trade.entries.Count},{trade.exits.Count}");
         }
         Debug.Log(sb);
 
@@ -257,7 +258,7 @@ public class TradingViewDataAssembler : MonoBehaviour
         public string symbol;
         public Side side;
         public OrderType type;
-        public int amount;
+        public float amount;
         public float price;
         public OrderStatus status;
         public DateTime time;
@@ -297,16 +298,20 @@ public class TradingViewDataAssembler : MonoBehaviour
             var side = line["Side"] == "Buy" ? Side.Long : Side.Short;
 
             // Type:
-            var type = Enum.Parse<OrderType>(line["Type"].Replace(" ", ""));
+            var typeString = line["Type"].Replace(" ", "");
+            var type = Enum.Parse<OrderType>(typeString);
 
             // Amount:
             var qty = line["Qty"];
-            qty = qty.Replace(" ", ""); // TODO: why is that?
-            var amount = int.Parse(qty);
+            qty = qty.Replace(" ", ""); // TradingView adds space instead of comma for numbers > 999, therefore need to remove it
+            var amount = float.Parse(qty, floatCulture);
 
             // Price:
-            var priceString = line["Fill Price"];
-            var price = priceString == string.Empty ? float.Parse(line["Price"], floatCulture) : float.Parse(priceString, floatCulture);
+            var fillPriceString = line["Fill Price"];
+            fillPriceString = fillPriceString.Replace(" ", ""); // TradingView adds space instead of comma for numbers > 999, therefore need to remove it
+            var priceString = line["Price"];
+            priceString = priceString.Replace(" ", ""); // TradingView adds space instead of comma for numbers > 999, therefore need to remove it
+            var price = fillPriceString == string.Empty ? float.Parse(priceString, floatCulture) : float.Parse(fillPriceString, floatCulture);
             // necessary since some prices have more than 2 digits:
             price = Mathf.Round(price * 100f) / 100f;
 
@@ -350,7 +355,7 @@ public class TradingViewDataAssembler : MonoBehaviour
         public string symbol;
         public DateTime time;
         public float price;
-        public int amount;
+        public float amount;
 
         public Order GetOrder()
         {
@@ -401,7 +406,7 @@ public class TradingViewDataAssembler : MonoBehaviour
             var amountStartIndex = text.IndexOf("for ", priceEndIndex) + "for ".Length;
             var amountEndIndex = text.IndexOf(' ', amountStartIndex);
             var amountString = text.Substring(amountStartIndex, amountEndIndex - amountStartIndex);
-            var amount = int.Parse(amountString);
+            var amount = float.Parse(amountString, floatCulture);
 
             var tradingJournalEntry = new TradingJournalEntry
             {
@@ -436,7 +441,7 @@ public class TradingViewDataAssembler : MonoBehaviour
         public float avgFillPrice;
         public float priceTarget;
         public float stopLoss;
-        public int amount;
+        public float amount;
     }
 
     List<PositionsEntry> GetPositionsEntries(CultureInfo floatCulture, List<Dictionary<string, string>> positions)
@@ -464,7 +469,7 @@ public class TradingViewDataAssembler : MonoBehaviour
             var hasStopLoss = float.TryParse(line["Stop Loss"], NumberStyles.Float, floatCulture, out var stopLoss);
 
             // Amount:
-            var amount = int.Parse(line["Qty"]);
+            var amount = float.Parse(line["Qty"], floatCulture);
 
             var positionsEntry = new PositionsEntry
             {
@@ -520,7 +525,11 @@ public class TradingViewDataAssembler : MonoBehaviour
     string CapDecimalPlaces(float value, CultureInfo floatCulture)
     {
         return value == 0f ? "" : Math.Round(value, 2, MidpointRounding.AwayFromZero).ToString("0.00", floatCulture);
+    }
 
+    string FloatToString(float value, CultureInfo floatCulture)
+    {
+        return value.ToString(floatCulture);
     }
     #endregion
 }
