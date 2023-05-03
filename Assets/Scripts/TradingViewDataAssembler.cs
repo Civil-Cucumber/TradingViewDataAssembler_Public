@@ -90,14 +90,12 @@ public class TradingViewDataAssembler : MonoBehaviour
     {
         var floatCulture = new CultureInfo("en-US");
         var historyEntries = GetHistoryEntries(floatCulture, tradingViewData.history);
-        var remainingTradingJournalEntries = GetTradingJournalEntries(floatCulture, tradingViewData.tradingJournal);
         var positionsEntries = GetPositionsEntries(floatCulture, tradingViewData.positions);
 
         var sb = new StringBuilder();
         var trades = new List<Trade>();
 
-        var firstTradingJournalEntryTime = remainingTradingJournalEntries.OrderBy(entry => entry.time).FirstOrDefault().time;
-        var firstHistoryEntryTime = historyEntries.OrderBy(entry => entry.time).FirstOrDefault().time;
+        var firstHistoryEntryTime = historyEntries.OrderBy(entry => entry.placingTime).FirstOrDefault().placingTime;
 
         foreach (var historyEntry in historyEntries)
         {
@@ -122,7 +120,7 @@ public class TradingViewDataAssembler : MonoBehaviour
                 currentTrade.stopLosses.Add(historyEntry.GetOrder());
                 if (historyEntry.status == OrderStatus.Filled)
                 {
-                    var exitOrder = GetTradingJournalEntry(historyEntry, remainingTradingJournalEntries, firstTradingJournalEntryTime, "");
+                    var exitOrder = historyEntry.GetOrder();
                     currentTrade.exits.Add(exitOrder);
                 }
             }
@@ -133,7 +131,7 @@ public class TradingViewDataAssembler : MonoBehaviour
                 currentTrade.priceTargets.Add(historyEntry.GetOrder());
                 if (historyEntry.status == OrderStatus.Filled)
                 {
-                    var exitOrder = GetTradingJournalEntry(historyEntry, remainingTradingJournalEntries, firstTradingJournalEntryTime, "");
+                    var exitOrder = historyEntry.GetOrder();
                     currentTrade.exits.Add(exitOrder);
                 }
             }
@@ -143,7 +141,7 @@ public class TradingViewDataAssembler : MonoBehaviour
                 if (historyEntry.status == OrderStatus.Filled)
                 {
                     currentTrade.side = historyEntry.side;
-                    var entryOrder = GetTradingJournalEntry(historyEntry, remainingTradingJournalEntries, firstTradingJournalEntryTime, "(FIRST BUY-IN)");
+                    var entryOrder = historyEntry.GetOrder();
                     currentTrade.entries.Add(entryOrder);
                 }
             }
@@ -152,7 +150,7 @@ public class TradingViewDataAssembler : MonoBehaviour
             {
                 if (historyEntry.status == OrderStatus.Filled)
                 {
-                    var entryOrder = GetTradingJournalEntry(historyEntry, remainingTradingJournalEntries, firstTradingJournalEntryTime, "(INCREASE POS)");
+                    var entryOrder = historyEntry.GetOrder();
                     currentTrade.entries.Add(entryOrder);
 
                     // "Reset" trade if first entry added, but has already exit position from before entry (= older trade where entry position info is now missing):
@@ -169,13 +167,17 @@ public class TradingViewDataAssembler : MonoBehaviour
             {
                 if (historyEntry.status == OrderStatus.Filled)
                 {
-                    var exitOrder = GetTradingJournalEntry(historyEntry, remainingTradingJournalEntries, firstTradingJournalEntryTime, "(DECREASE POS)");
+                    var exitOrder = historyEntry.GetOrder();
                     currentTrade.exits.Add(exitOrder);
                 }
             }
         }
 
-        trades = trades.Where(entry => entry.entries.Count > 0).OrderByDescending(entry => entry.StartTradeTime).ToList();
+
+        trades = trades
+            .Where(entry => entry.entries.Count > 0)
+            .OrderByDescending(entry => entry.StartTradeTime)
+            .ToList();
 
         // Add price targets and stop losses for active trades:
         var remainingPositionsEntries = new List<PositionsEntry>(positionsEntries);
@@ -211,23 +213,9 @@ public class TradingViewDataAssembler : MonoBehaviour
             }
         }
 
-        // Something went wrong if there are trading journal entries left:
-        if (remainingTradingJournalEntries.Count > 0)
-        {
-            var tradesBeforeFirstHistoryEntry = remainingTradingJournalEntries.Count(x => x.time < firstHistoryEntryTime);
-            var tradesAfterFirstHistoryEntry = remainingTradingJournalEntries.Count - tradesBeforeFirstHistoryEntry;
-            if (tradesAfterFirstHistoryEntry > 0)
-            {
-                Debug.LogWarning($"There are {tradesAfterFirstHistoryEntry} remaining trading journal entries where no trade was found for - AFTER first history entry!!!\nProbably because TradingView sometimes simply doesn't show some trades from a few days ago in History (and in TradingJournal as well) anymore for some reason!");
-            }
-            if (tradesBeforeFirstHistoryEntry > 0)
-            {
-                Debug.Log($"There are {tradesBeforeFirstHistoryEntry} remaining trading journal entries where no trade was found for - BEFORE first history entry, so that's probably why.");
-            }
-        }
-
-        // filter out trades that were sold before trading journal begins and sort remaining by entry time:
-        trades = trades.Where(entry => entry.exits.Count == 0 || entry.exits.Min(x => x.time) >= firstTradingJournalEntryTime)
+        // sort by entry time:
+        trades = trades
+            .Where(entry => entry.exits.Count == 0 || entry.exits.Min(x => x.time) >= firstHistoryEntryTime)
             .OrderByDescending(entry => entry.StartTradeTime)
             .ToList();
 
@@ -261,7 +249,8 @@ public class TradingViewDataAssembler : MonoBehaviour
         public float amount;
         public float price;
         public OrderStatus status;
-        public DateTime time;
+        public DateTime placingTime;
+        public DateTime closingTime;
         public int orderId;
 
         public Order GetOrder()
@@ -271,7 +260,7 @@ public class TradingViewDataAssembler : MonoBehaviour
                 amount = amount,
                 orderId = orderId,
                 price = price,
-                time = time
+                time = closingTime
             };
         }
     }
@@ -315,8 +304,11 @@ public class TradingViewDataAssembler : MonoBehaviour
             // necessary since some prices have more than 2 digits:
             price = Mathf.Round(price * 100f) / 100f;
 
-            // Time:
-            var time = DateTime.Parse(line["Time"]);
+            // Placing Time:
+            var placingTime = DateTime.Parse(line["Placing Time"]);
+
+            // Closing Time:
+            var closingTime = DateTime.Parse(line["Closing Time"]);
 
             // Order Id:
             var orderId = int.Parse(line["Order id"]);
@@ -329,109 +321,25 @@ public class TradingViewDataAssembler : MonoBehaviour
                 amount = amount,
                 price = price,
                 status = status,
-                time = time,
+                placingTime = placingTime,
+                closingTime = closingTime,
                 orderId = orderId
             };
             historyEntries.Add(historyEntry);
         }
 
-        historyEntries = historyEntries.OrderBy(entry => entry.time).ToList();
+        historyEntries = historyEntries.OrderBy(entry => entry.placingTime).ToList();
 
         sb.AppendLine("Symbol, Side, Type, Amount, Price, Status, Time, Order Id");
         foreach (HistoryEntry historyEntry in historyEntries)
         {
-            sb.AppendLine($"{historyEntry.symbol},{historyEntry.side},{historyEntry.type},{historyEntry.amount},{historyEntry.price},{historyEntry.status},{historyEntry.time},{historyEntry.orderId}");
+            sb.AppendLine($"{historyEntry.symbol},{historyEntry.side},{historyEntry.type},{historyEntry.amount},{historyEntry.price},{historyEntry.status},{historyEntry.placingTime},{historyEntry.closingTime},{historyEntry.orderId}");
         }
         Debug.Log(sb);
 
         return historyEntries;
     }
-    #endregion
-
-    #region Trading Journal
-    class TradingJournalEntry
-    {
-        public int orderId;
-        public string symbol;
-        public DateTime time;
-        public float price;
-        public float amount;
-
-        public Order GetOrder()
-        {
-            return new Order()
-            {
-                amount = amount,
-                orderId = orderId,
-                price = price,
-                time = time
-            };
-        }
-    }
-
-    List<TradingJournalEntry> GetTradingJournalEntries(CultureInfo floatCulture, List<Dictionary<string, string>> tradingJournal)
-    {
-        var sb = new StringBuilder();
-        var tradingJournalEntries = new List<TradingJournalEntry>();
-
-        foreach (var line in tradingJournal)
-        {
-            var text = line["Text"];
-            if (!text.Contains("has been executed at price"))
-            {
-                continue;
-            }
-
-            // Order Id:
-            var orderIdStartIndex = text.IndexOf("Order ") + "Order ".Length;
-            var orderIdEndIndex = text.IndexOf(' ', orderIdStartIndex);
-            var orderIdString = text.Substring(orderIdStartIndex, orderIdEndIndex - orderIdStartIndex);
-            var orderId = int.Parse(orderIdString);
-
-            // Symbol:
-            var symbolStartIndex = text.IndexOf(':') + 1;
-            var symbolEndIndex = text.IndexOf(' ', symbolStartIndex);
-            var symbol = text.Substring(symbolStartIndex, symbolEndIndex - symbolStartIndex);
-
-            // Time:
-            var time = DateTime.Parse(line["Time"]);
-
-            // Price:
-            var priceStartIndex = text.IndexOf("price ") + "price ".Length;
-            var priceEndIndex = text.IndexOf(' ', priceStartIndex);
-            var priceString = text.Substring(priceStartIndex, priceEndIndex - priceStartIndex);
-            var price = float.Parse(priceString, floatCulture);
-
-            // Amount:
-            var amountStartIndex = text.IndexOf("for ", priceEndIndex) + "for ".Length;
-            var amountEndIndex = text.IndexOf(' ', amountStartIndex);
-            var amountString = text.Substring(amountStartIndex, amountEndIndex - amountStartIndex);
-            var amount = float.Parse(amountString, floatCulture);
-
-            var tradingJournalEntry = new TradingJournalEntry
-            {
-                orderId = orderId,
-                symbol = symbol,
-                time = time,
-                price = price,
-                amount = amount
-            };
-
-            tradingJournalEntries.Add(tradingJournalEntry);
-        }
-
-        tradingJournalEntries = tradingJournalEntries.OrderBy(entry => entry.time).ToList();
-
-        sb.AppendLine("Order Id, Symbol, Time, Price, Amount");
-        foreach (var tradingJournalEntry in tradingJournalEntries)
-        {
-            sb.AppendLine($"{tradingJournalEntry.orderId},{tradingJournalEntry.symbol},{tradingJournalEntry.time},{CapDecimalPlaces(tradingJournalEntry.price, floatCulture)},{tradingJournalEntry.amount}");
-        }
-        Debug.Log(sb);
-
-        return tradingJournalEntries;
-    }
-    #endregion
+    #endregion   
 
     #region Positions
     class PositionsEntry
@@ -496,27 +404,6 @@ public class TradingViewDataAssembler : MonoBehaviour
     #endregion
 
     #region Helping Functions
-    Order GetTradingJournalEntry(HistoryEntry historyEntry, List<TradingJournalEntry> remainingTradingJournalEntries, DateTime firstTradingJournalEntryTime, string additionalMissingEntryWarningTypeInfo)
-    {
-        var tradingJournalEntry = remainingTradingJournalEntries.FirstOrDefault(x => x.orderId == historyEntry.orderId);
-        // temporary order data for trades outside of trading journal - less accurate data, but so trade has all exits and entries and correctly marked as "completed" then:
-        Order order = historyEntry.GetOrder();
-        if (tradingJournalEntry != null)
-        {
-            order = tradingJournalEntry.GetOrder();
-            remainingTradingJournalEntries.Remove(tradingJournalEntry);
-        }
-        else
-        {
-            if (historyEntry.time >= firstTradingJournalEntryTime)
-            {
-                Debug.LogWarning($"No {historyEntry.type} {additionalMissingEntryWarningTypeInfo} trading journal entry could be found for {historyEntry.symbol} from {historyEntry.time} (after TradingJournal starts!!!)\nProbably because TradingView sometimes simply doesn't show some trades from a few days ago in TradingJournal anymore for some reason!");
-            }
-        }
-
-        return order;
-    }
-
     Side GetInvertedSide(Side side)
     {
         return side == Side.Long ? Side.Short : Side.Long;

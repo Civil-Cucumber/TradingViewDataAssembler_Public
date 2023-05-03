@@ -51,7 +51,6 @@ public class UIFeedback : MonoBehaviour
         sb.AppendLine("Copied to clipboard!");
         sb.AppendLine("<size=35%><color=#ABABAB>");
         sb.AppendLine($"{tradingViewData.historyFileName}");
-        sb.AppendLine($"{tradingViewData.tradingJournalFileName}");
         sb.AppendLine($"{tradingViewData.positionsFileName}");
         sb.AppendLine("<color=white>");
         sb.AppendLine("<size=50%>Click or press Esc / Return / Space to close the app.");
@@ -64,7 +63,7 @@ public class UIFeedback : MonoBehaviour
             eventID = EventTriggerType.PointerClick
         };
         entry.callback.AddListener(data => Quit());
-        
+
         clickToFinish.triggers.Add(entry);
 
         StopAllCoroutines();
