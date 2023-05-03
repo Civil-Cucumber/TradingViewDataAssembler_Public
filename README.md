@@ -12,8 +12,8 @@ _Symbol | Side | Time of first entry | Avg entry price | Total entry stock amoun
 
 [Version 1.2](https://github.com/Civil-Cucumber/TradingViewDataAssembler_Public/releases/tag/v1.2.0)
 
-## Update info
-From version 1.2 it's no longer necessary to download TradingJournal.csv! All you will need is Positions.csv and History.csv.
+## Update info:
+From version 1.2 on it's no longer necessary to download TradingJournal.csv! All you will need is Positions.csv and History.csv.
 
 ## Setup:
 1. Open [tradingview.com/chart](tradingview.com/chart) (make sure your language is set to English!) and connect to **PaperTrading**.
