@@ -87,15 +87,13 @@ public class FileManager : MonoBehaviour
             var dateStartIndex = name.IndexOf('2');
             var dateEndIndex = name.IndexOf('T', dateStartIndex);
             var timeStartIndex = dateEndIndex + 1;
-            var timeEndIndex = name.IndexOf('.', timeStartIndex);
 
             var dateString = name.Substring(dateStartIndex, dateEndIndex - dateStartIndex);
             var dateValues = dateString.Split('-');
             dateString = $"{dateValues[2]}.{dateValues[1]}.{dateValues[0]}";
 
-            var timeString = name.Substring(timeStartIndex, timeEndIndex - timeStartIndex);
-            var timeValues = timeString.Split('_');
-            timeString = $"{timeValues[0]}:{timeValues[1]}:{timeValues[2]}";
+            var timeString = name.Substring(timeStartIndex, 8);
+            timeString = $"{timeString[0]}{timeString[1]}:{timeString[3]}{timeString[4]}:{timeString[6]}{timeString[7]}";
 
             var dateTimeString = $"{dateString} {timeString}";
             var dateTimeCulture = new CultureInfo("de-DE");
