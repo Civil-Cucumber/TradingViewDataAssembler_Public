@@ -311,7 +311,7 @@ public class TradingViewDataAssembler : MonoBehaviour
             var closingTime = DateTime.Parse(line["Closing Time"]);
 
             // Order Id:
-            var orderId = int.Parse(line["Order id"]);
+            var orderId = int.Parse(line["Order ID"]);
 
             var historyEntry = new HistoryEntry
             {
