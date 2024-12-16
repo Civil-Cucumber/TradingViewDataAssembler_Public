@@ -298,7 +298,7 @@ public class TradingViewDataAssembler : MonoBehaviour
             // Price:
             var fillPriceString = line["Fill Price"];
             fillPriceString = fillPriceString.Replace(" ", ""); // TradingView adds space instead of comma for numbers > 999, therefore need to remove it
-            var priceString = line["Price"];
+            var priceString = line["Limit Price"];
             priceString = priceString.Replace(" ", ""); // TradingView adds space instead of comma for numbers > 999, therefore need to remove it
             var price = fillPriceString == string.Empty ? float.Parse(priceString, floatCulture) : float.Parse(fillPriceString, floatCulture);
             // necessary since some prices have more than 2 digits:
