@@ -17,7 +17,7 @@ _Symbol | Side | Time of first entry | Avg entry price | Total entry stock amoun
 - From version 1.2 on it's no longer necessary to download TradingJournal.csv! All you will need is Positions.csv and History.csv.
 
 ## Setup:
-1. Open [tradingview.com/chart](tradingview.com/chart) (make sure your language is set to English!) and in the Trading Panel connect to **Paper Trading** or **Interactive Brokers** (if you want to start with 1 Share trading already).
+1. Open [tradingview.com/chart](tradingview.com/chart) (make sure your language is set to English!) and in the Trading Panel connect to **Paper Trading** - or **Interactive Brokers** (if you want to start with 1 Share trading already).
 2. Click on the **Positions** tab, then click on the 3 dots in the upper right corner: make sure all categories have a checkmark.
 3. Click on the **History** (IBKR: **Trade History**) tab, then click on the 3 dots in the upper right corner: make sure all categories have a checkmark.
 4. (Only for IBKR:) Click on the **Orders** tab, then click on the 3 dots in the upper right corner: make sure all categories have a checkmark.
