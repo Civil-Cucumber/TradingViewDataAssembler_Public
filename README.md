@@ -31,8 +31,8 @@ _Symbol | Side | Time of first entry | Avg entry price | Total entry stock amoun
 
 <img src="https://user-images.githubusercontent.com/126332884/222278572-42cb6627-a752-4664-a773-61b3d96eb3dd.png" width="600">
 
-8. If you want to always open your Trading Journal automatically after you click to close the TradingViewDataAssembler: go to the folder containing the .exe file and open there the "TradingView Data Assembler_Data" folder. Then go to "StreamingAssets" and open "SettingsConfig.json".
-9. Copy-paste your journal's URL between the quotation marks, depending on whether it should be opened after you've read out the data for Paper Trading or IBKR.
+8. If you want to always open your Trading Journal automatically after you click to close the TradingViewDataAssembler: go to the folder containing the TradingView Data Assembler.exe file and open there the "TradingView Data Assembler_Data" folder. Then go to "StreamingAssets" and open "SettingsConfig.json".
+9. Here copy-paste your journal's URL between the quotation marks for the according variables, depending on whether it should be happening after you've read out the data for Paper Trading or IBKR.
     F. e.:
     `"paperTradingJournalUrl": "https://docs.google.com/spreadsheets/d/1wbYD_wsuVRZhZAlszSL__EglcEidM4J-BGCBX8C_StM/",`
 
