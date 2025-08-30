@@ -37,9 +37,9 @@ _Symbol | Side | Time of first entry | Avg entry price | Total entry stock amoun
     `"paperTradingJournalUrl": "https://docs.google.com/spreadsheets/d/1wbYD_wsuVRZhZAlszSL__EglcEidM4J-BGCBX8C_StM/",`
 
 ## How to use:
-1. Open [tradingview.com/chart](tradingview.com/chart) (make sure your language is set to English!) and connect to **PaperTrading**.
-2. Click on **Paper Trading** in the upper left, then `Export Data`.
-3. Select **Positions** and click `Export`, select **History** (IBKR: **Trade History**) and click `Export`, (Only for IBKR:) select **Orders** and click `Export`. If you didn't select your Downloads folder in step 5 above, move the downloaded csv files to the folder you defined there.
+1. Open [tradingview.com/chart](tradingview.com/chart) (make sure your language is set to English!) and in the Trading Panel connect to **Paper Trading** or **Interactive Brokers**.
+2. Click on **Paper Trading**/**Interactive Brokers** in the upper left, then `Export Data...`.
+3. Select **Positions** and click `Export`, then select **History** (IBKR: **Trade History**) and click `Export`, (Only for **IBKR**!:) then select **Orders** and click `Export`. If you didn't select your Downloads folder in step 5 above, move the downloaded Csv files to the folder you defined there.
 
 <img src="https://user-images.githubusercontent.com/126332884/222279662-691f9e25-7007-40eb-9734-b7c529686077.png" width="600">
 
@@ -47,7 +47,7 @@ _Symbol | Side | Time of first entry | Avg entry price | Total entry stock amoun
 
 <img src="https://user-images.githubusercontent.com/126332884/222283307-7978a920-6cfd-4657-8f15-f9a214154c79.png" width="600">
 
-5. Open your trading journal **spreadsheet**, and paste the data in.
+5. Open your Trading Journal **spreadsheet**, and paste the data in.
 
 <img src="https://user-images.githubusercontent.com/126332884/222283536-e9de50e1-a254-45f2-8704-f86ae649e646.png" width="600">
 
