@@ -1,12 +1,12 @@
 # TradingView Data Assembler
 
-This tool assembles paper trading data from TradingView into a readable csv format, to be able to create a Trading Journal in a spreadsheet.
+This tool assembles your data from TradingView's Paper Trading or Interactive Brokers connection into a **readable csv format**, to be able to easily update your Trading Journal spreadsheet.
 
 1 row = 1 trade of the same stock, until all bought stocks have been sold.
 
 **Columns:**
 
-_Symbol | Side | Time of first entry | Avg entry price | Total entry stock amount | Stop Loss | Price Target | Time of last exit | Avg exit price | Total exit stock amount | Amount of different entries | Amount of different exits_
+_Symbol | Side | Time of first entry | Avg entry price | Total entry stock amount (incl. from Adds) | Stop Loss | Price Target | Time of final exit | Avg exit price | Total exit stock amount (incl. from partial closes) | Amount of entries in total | Times of Adds (separated by '#') | Amount of exits in total | Times of Partial Closes (separated by '#') | Total commission costs_
 
 ## Download:
 
@@ -25,11 +25,16 @@ _Symbol | Side | Time of first entry | Avg entry price | Total entry stock amoun
 <img src="https://user-images.githubusercontent.com/126332884/222277125-d58adb8b-f4cf-4b73-a285-fbc6c583103a.png" width="600">
 
 4. Open **TradingViewDataAssembler**.
-5. Open **Explorer** (Win) or **Finder** (Mac) and copy the path where you plan to save TradingView's Papertrading csv files to (e. g. `C:\Users\yourname\Downloads` (Win) or `/Users/yourname/Downloads` (Mac))
+5. Open **Explorer** (Win) or **Finder** (Mac) and copy the path where you plan to save TradingView's exported Paper Trading / Interactive Broker csv files to (e. g. `C:\Users\yourname\Downloads` (Win) or `/Users/yourname/Downloads` (Mac))
 6. Paste it into the `Folder` input field in **TradingViewDataAssembler**.
 7. Select your "Broker": do you want to read out data from **Paper Trading** or **IBKR** files?
 
 <img src="https://user-images.githubusercontent.com/126332884/222278572-42cb6627-a752-4664-a773-61b3d96eb3dd.png" width="600">
+
+8. If you want to always open your Trading Journal automatically after you click to close the TradingViewDataAssembler: go to the folder containing the .exe file and open there the "TradingView Data Assembler_Data" folder. Then go to "StreamingAssets" and open "SettingsConfig.json".
+9. Copy-paste your journal's URL between the quotation marks, depending on whether it should be opened after you've read out the data for Paper Trading or IBKR.
+    F. e.:
+    `"paperTradingJournalUrl": "https://docs.google.com/spreadsheets/d/1wbYD_wsuVRZhZAlszSL__EglcEidM4J-BGCBX8C_StM/",`
 
 ## How to use:
 1. Open [tradingview.com/chart](tradingview.com/chart) (make sure your language is set to English!) and connect to **PaperTrading**.
@@ -58,3 +63,7 @@ The `History.csv` is limited to max. 100 orders. There is unfortunately no way t
 
 `Account History.csv` and `Orders.csv` only contains the data of the last **7 days**! There is unfortunately no way to load more, so information for orders that have been filled before would need to be manually received and copied from the Interactive Broker's Activity Statements site in the Reports section. 
 Better update your Journal every day to avoid this!
+
+## How to create your own Trading Journal in Google Sheets:
+
+See here: https://www.reddit.com/r/RealDayTrading/comments/1ffyj1q/from_38_to_81_after_18_months_44_trading_journal/
