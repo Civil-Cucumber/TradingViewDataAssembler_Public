@@ -20,8 +20,18 @@ public class UIFeedback : MonoBehaviour
     public TMP_InputField folderInput;
     public EventTrigger clickToFinish;
 
+    // Broker:
+    public ToggleGroup toggleGroup;
+    public Toggle paperTrading;
+    public Toggle ibkr;
+    
+    // ConfigManager:
+    public ConfigManager configManager;
+    
+    bool isClosing = false;
+
     // Folder:
-    public void InitializeFolderInput()
+    public void InitializeInput()
     {
         var folderPath = PlayerPrefs.GetString(SAVED_FOLDER_KEY);
         if (folderPath != "")
@@ -29,6 +39,26 @@ public class UIFeedback : MonoBehaviour
             folderInput.text = folderPath;
         }
         OnUpdateFolderPath(folderPath);
+
+        var brokerIndex = PlayerPrefs.GetInt(SAVED_BROKER_INDEX);
+        OnUpdateBroker(brokerIndex);
+    }
+
+    public void OnUpdateBroker(int brokerIndex)
+    {
+        toggleGroup.SetAllTogglesOff(false);
+        switch (brokerIndex)
+        {
+            default:
+            case (int)Broker.PaperTrading:
+                paperTrading.SetIsOnWithoutNotify(true);
+                break;
+            case (int)Broker.IBKR:
+                ibkr.SetIsOnWithoutNotify(true);
+                break;
+        }
+        PlayerPrefs.SetInt(SAVED_BROKER_INDEX, brokerIndex);
+        PlayerPrefs.Save();
     }
 
     public void OnUpdateFolderPath(string path)
@@ -52,6 +82,7 @@ public class UIFeedback : MonoBehaviour
         sb.AppendLine("<size=35%><color=#ABABAB>");
         sb.AppendLine($"{tradingViewData.historyFileName}");
         sb.AppendLine($"{tradingViewData.positionsFileName}");
+        sb.AppendLine($"{tradingViewData.ordersFileName}");
         sb.AppendLine("<color=white>");
         sb.AppendLine("<size=50%>Click or press Esc / Return / Space to close the app.");
 
@@ -70,6 +101,19 @@ public class UIFeedback : MonoBehaviour
         StartCoroutine(CloseOnInput());
     }
 
+    public void FailedConversion(string errorTitle, string errorMessage)
+    {
+        var sb = new StringBuilder();
+        
+        sb.AppendLine("<color=#FF9292>ERROR: " + errorTitle);
+        sb.AppendLine("<size=50%><color=white>");
+        sb.AppendLine(errorMessage);
+        sb.AppendLine();
+        
+        statusText.text = sb.ToString();
+        previewText.text = "(Please read https://github.com/Civil-Cucumber/TradingViewDataAssembler_Public to make sure you follow all steps as described.)";
+    }
+
     IEnumerator CloseOnInput()
     {
         while (!Input.GetKeyDown(KeyCode.Escape) && !Input.GetKeyDown(KeyCode.Return) && !Input.GetKeyDown(KeyCode.Space))
@@ -82,7 +126,16 @@ public class UIFeedback : MonoBehaviour
 
     void Quit()
     {
-        //Application.OpenURL(tradingJournalURL);
-        Application.Quit();
+        if (!isClosing)
+        {
+            isClosing = true;
+            var broker = (Broker)PlayerPrefs.GetInt(SAVED_BROKER_INDEX);
+            var tradingJournalURL = broker == Broker.PaperTrading ? configManager.Config.paperTradingJournalUrl : configManager.Config.ibkrJournalUrl;
+            if (tradingJournalURL != string.Empty)
+            {
+                Application.OpenURL(tradingJournalURL);
+            }
+            Application.Quit();
+        }
     }
 }

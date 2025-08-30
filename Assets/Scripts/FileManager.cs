@@ -8,61 +8,95 @@ using UnityEngine;
 public class FileManager : MonoBehaviour
 {
     public const string SAVED_FOLDER_KEY = "folderPath";
+    public const string SAVED_BROKER_INDEX = "brokerIndex";
 
-    const string HISTORY_FILE_KEYWORD = "history-all";
-    const string POSITIONS_FILE_KEYWORD = "positions";
+    const string PT_HISTORY_FILE_KEYWORD = "paper-trading-history-all";
+    const string PT_POSITIONS_FILE_KEYWORD = "paper-trading-positions";
 
-    public bool OpenFiles(out TradingViewData tradingViewData)
+    const string IBKR_HISTORY_FILE_KEYWORD = "interactive-brokers-trade-history";
+    const string IBKR_POSITIONS_FILE_KEYWORD = "interactive-brokers-positions";
+    const string IBKR_ORDERS_FILE_KEYWORD = "interactive-brokers-orders-all";
+
+    public bool OpenFiles(out TradingViewData tradingViewData, UIFeedback uiFeedback)
     {
         var folderPath = PlayerPrefs.GetString(SAVED_FOLDER_KEY);
+
         if (!Directory.Exists(folderPath))
         {
+            uiFeedback.FailedConversion("Folder doesn't exist!", "The selected folder does NOT exist!");
             Debug.LogError("Folder doesn't exist!");
             tradingViewData = null;
 
             return false;
         }
 
+        var broker = (Broker)PlayerPrefs.GetInt(SAVED_BROKER_INDEX, 0);
+        var historyFileKeyword = broker == Broker.PaperTrading ? PT_HISTORY_FILE_KEYWORD : IBKR_HISTORY_FILE_KEYWORD;
+        var positionsFileKeyword = broker == Broker.PaperTrading ? PT_POSITIONS_FILE_KEYWORD : IBKR_POSITIONS_FILE_KEYWORD;
+        var ordersFileKeyword = IBKR_ORDERS_FILE_KEYWORD;
+
         var historyFiles = new List<FileData>();
         var positionsFiles = new List<FileData>();
+        var ordersFiles = new List<FileData>();
 
         DirectoryInfo directory = new DirectoryInfo(folderPath);
         var csvFiles = directory.GetFiles("*.csv");
+
         foreach (var file in csvFiles)
         {
-            if (file.Name.Contains(HISTORY_FILE_KEYWORD))
+            if (file.Name.Contains(historyFileKeyword))
             {
                 historyFiles.Add(new FileData(file.Name));
             }
-            else if (file.Name.Contains(POSITIONS_FILE_KEYWORD))
+            else if (file.Name.Contains(positionsFileKeyword))
             {
                 positionsFiles.Add(new FileData(file.Name));
             }
+            else if (file.Name.Contains(ordersFileKeyword))
+            {
+                ordersFiles.Add(new FileData(file.Name));
+            }
         }
+
 
         var newestHistoryFile = historyFiles.OrderByDescending(entry => entry.time).FirstOrDefault();
         var newestPositionsFile = positionsFiles.OrderByDescending(entry => entry.time).FirstOrDefault();
+        var newestOrdersFile = ordersFiles.OrderByDescending(entry => entry.time).FirstOrDefault();
+        
+
+        if (newestHistoryFile == null || newestPositionsFile == null || (newestOrdersFile == null && broker == Broker.IBKR))
+        {
+            uiFeedback.FailedConversion("Missing Files!", "At least one of the required CSV files is missing in the selected folder.");
+            Debug.LogError("At least one of the required CSV files is missing in the selected folder.");
+        }
 
         var historyFileName = newestHistoryFile.name;
         var positionsFileName = newestPositionsFile.name;
+        // Orders file is only necessary for IBKR:
+        var orderFileName = newestOrdersFile != null && broker == Broker.IBKR ? newestOrdersFile.name : string.Empty;
+
 
         try
         {
             var historyCsv = File.ReadAllText(folderPath + Path.DirectorySeparatorChar + historyFileName);
             var positionsCsv = File.ReadAllText(folderPath + Path.DirectorySeparatorChar + positionsFileName);
+            var ordersCsv = orderFileName != string.Empty ? File.ReadAllText(folderPath + Path.DirectorySeparatorChar + orderFileName) : string.Empty;
 
             tradingViewData = new TradingViewData
             {
                 history = CsvReader.Read(historyCsv),
                 positions = CsvReader.Read(positionsCsv),
+                orders = orderFileName != string.Empty ? CsvReader.Read(ordersCsv) : null,
 
                 historyFileName = historyFileName,
-                positionsFileName = positionsFileName
+                positionsFileName = positionsFileName,
+                ordersFileName = orderFileName
             };
         }
         catch
         {
-            Debug.LogError("Close the CSV files!");
+            uiFeedback.FailedConversion("Can't access files!", "The CSV files need to be closed!");
+            Debug.LogError("The CSV files need to be closed!");
             tradingViewData = null;
 
             return false;
@@ -105,8 +139,10 @@ public class FileManager : MonoBehaviour
     {
         public List<Dictionary<string, string>> history;
         public List<Dictionary<string, string>> positions;
+        public List<Dictionary<string, string>> orders;
 
         public string historyFileName;
         public string positionsFileName;
+        public string ordersFileName;
     }
 }

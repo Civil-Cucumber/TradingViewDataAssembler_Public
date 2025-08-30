@@ -22,17 +22,20 @@ public class TradingViewDataAssembler : MonoBehaviour
         Limit,
         Stop,
         TakeProfit,
-        StopLoss
+        StopLoss,
+        IBKR
     }
 
     enum OrderStatus
     {
+        Working,
         Filled,
         Cancelled,
         Rejected
     }
 
     #region Trades
+
     class Trade
     {
         public string symbol;
@@ -56,9 +59,11 @@ public class TradingViewDataAssembler : MonoBehaviour
                 {
                     average += entry.price * entry.amount;
                 }
+
                 return TotalEntryAmount > 0 ? average / TotalEntryAmount : 0;
             }
         }
+
         public float AvgExitPrice
         {
             get
@@ -68,14 +73,57 @@ public class TradingViewDataAssembler : MonoBehaviour
                 {
                     average += exit.price * exit.amount;
                 }
+
                 return TotalExitAmount > 0 ? average / TotalExitAmount : 0;
             }
         }
+
         public float LastStopLoss => stopLosses.OrderByDescending(x => x.time).FirstOrDefault().price;
         public float LastPriceTarget => priceTargets.OrderByDescending(x => x.time).FirstOrDefault().price;
 
         public float TotalEntryAmount => entries.Sum(x => x.amount);
         public float TotalExitAmount => exits.Sum(x => x.amount);
+
+        public float TotalCommissions
+        {
+            get { return entries.Sum(x => x.commission) + exits.Sum(x => x.commission); }
+        }
+        
+        public string Adds
+        {
+            get
+            {
+                var adds = string.Empty;
+                for (int i = 1; i < entries.Count; i++)
+                {
+                    if (adds != string.Empty)
+                    {
+                        adds += "#";
+                    }
+
+                    adds += entries[i].time;
+                }
+                return adds;
+            }
+        }
+        
+        public string PartialCloses
+        {
+            get
+            {
+                var partialCloses = string.Empty;
+                for (int i = 0; i < exits.Count - 1; i++)
+                {
+                    if (partialCloses != string.Empty)
+                    {
+                        partialCloses += "#";
+                    }
+
+                    partialCloses += exits[i].time;
+                }
+                return partialCloses;
+            }
+        }
     }
 
     struct Order
@@ -83,14 +131,17 @@ public class TradingViewDataAssembler : MonoBehaviour
         public DateTime time;
         public float price;
         public float amount;
-        public int orderId;
+        public uint orderId;
+        public float commission;
     }
 
     public void AssembleData(TradingViewData tradingViewData)
     {
+        var broker = (Broker)PlayerPrefs.GetInt(SAVED_BROKER_INDEX);
         var floatCulture = new CultureInfo("en-US");
-        var historyEntries = GetHistoryEntries(floatCulture, tradingViewData.history);
-        var positionsEntries = GetPositionsEntries(floatCulture, tradingViewData.positions);
+        var historyEntries = GetHistoryEntries(floatCulture, tradingViewData.history, broker);
+        var positionsEntries = GetPositionsEntries(floatCulture, tradingViewData.positions, broker);
+        var orderEntries = GetOrderEntries(floatCulture, tradingViewData.orders, broker);
 
         var sb = new StringBuilder();
         var trades = new List<Trade>();
@@ -143,12 +194,38 @@ public class TradingViewDataAssembler : MonoBehaviour
                     currentTrade.side = historyEntry.side;
                     var entryOrder = historyEntry.GetOrder();
                     currentTrade.entries.Add(entryOrder);
+
+                    // Stop Loss + Price Target for IBKR:
+                    // TODO: filter cancelled / filled / working somehow? On the other hand then as soon as trade completed PT and SL wouldn't be available anymore...
+                    var relevantEntries = orderEntries.Where(entry => entry.symbol == historyEntry.symbol && entry.time >= historyEntry.placingTime).ToList();
+                    var priceTargets = relevantEntries.Where(entry => entry.side != historyEntry.side).ToList();
+                    foreach (var pt in priceTargets)
+                    {
+                        var ptOrder = new Order
+                        {
+                            amount = pt.amount,
+                            price = pt.limitPrice,
+                            time = pt.time,
+                        };
+                        currentTrade.priceTargets.Add(ptOrder);
+                    }
+                    var stopLosses = relevantEntries.Where(entry => entry.side == historyEntry.side).ToList();
+                    foreach (var sl in stopLosses)
+                    {
+                        var slOrder = new Order
+                        {
+                            amount = sl.amount,
+                            price = sl.limitPrice,
+                            time = sl.time,
+                        };
+                        currentTrade.stopLosses.Add(slOrder);
+                    }
                 }
             }
             // Increase position:
             else if (currentTrade.side == historyEntry.side)
             {
-                if (historyEntry.status == OrderStatus.Filled)
+                if (historyEntry.status == OrderStatus.Filled || broker != Broker.PaperTrading)
                 {
                     var entryOrder = historyEntry.GetOrder();
                     currentTrade.entries.Add(entryOrder);
@@ -165,7 +242,7 @@ public class TradingViewDataAssembler : MonoBehaviour
             // Decrease / Exit position:
             else
             {
-                if (historyEntry.status == OrderStatus.Filled)
+                if (historyEntry.status == OrderStatus.Filled || broker != Broker.PaperTrading)
                 {
                     var exitOrder = historyEntry.GetOrder();
                     currentTrade.exits.Add(exitOrder);
@@ -219,6 +296,8 @@ public class TradingViewDataAssembler : MonoBehaviour
             .OrderByDescending(entry => entry.StartTradeTime)
             .ToList();
 
+        // TODO: improve! (override system culture):
+        System.Threading.Thread.CurrentThread.CurrentCulture = new CultureInfo("de-DE");
         //sb.AppendLine("Symbol, Side, First Entry, Avg Price, Amount, Stop Loss, Target, Last Exit, Avg Price, Amount, Entries, Exits");
         foreach (var trade in trades)
         {
@@ -229,7 +308,7 @@ public class TradingViewDataAssembler : MonoBehaviour
             {
                 exitTradeString = "";
             }
-            sb.AppendLine($"{trade.symbol},{trade.side},{trade.StartTradeTime},{CapDecimalPlaces(trade.AvgEntryPrice, floatCulture)},{FloatToString(trade.TotalEntryAmount, floatCulture)},{CapDecimalPlaces(trade.LastStopLoss, floatCulture)},{CapDecimalPlaces(trade.LastPriceTarget, floatCulture)},{exitTradeString},{CapDecimalPlaces(trade.AvgExitPrice, floatCulture)},{FloatToString(trade.TotalExitAmount, floatCulture)},{trade.entries.Count},{trade.exits.Count}");
+            sb.AppendLine($"{trade.symbol},{trade.side},{trade.StartTradeTime},{CapDecimalPlaces(trade.AvgEntryPrice, floatCulture)},{FloatToString(trade.TotalEntryAmount, floatCulture)},{CapDecimalPlaces(trade.LastStopLoss, floatCulture)},{CapDecimalPlaces(trade.LastPriceTarget, floatCulture)},{exitTradeString},{CapDecimalPlaces(trade.AvgExitPrice, floatCulture)},{FloatToString(trade.TotalExitAmount, floatCulture)},{trade.entries.Count},{trade.Adds},{trade.exits.Count},{trade.PartialCloses},{CapDecimalPlaces(trade.TotalCommissions, floatCulture)}");
         }
         Debug.Log(sb);
 
@@ -251,7 +330,8 @@ public class TradingViewDataAssembler : MonoBehaviour
         public OrderStatus status;
         public DateTime placingTime;
         public DateTime closingTime;
-        public int orderId;
+        public uint orderId;
+        public float commission;
 
         public Order GetOrder()
         {
@@ -260,19 +340,20 @@ public class TradingViewDataAssembler : MonoBehaviour
                 amount = amount,
                 orderId = orderId,
                 price = price,
-                time = closingTime
+                time = closingTime,
+                commission = commission,
             };
         }
     }
 
-    List<HistoryEntry> GetHistoryEntries(CultureInfo floatCulture, List<Dictionary<string, string>> history)
+    List<HistoryEntry> GetHistoryEntries(CultureInfo floatCulture, List<Dictionary<string, string>> history, Broker broker)
     {
         var sb = new StringBuilder();
         var historyEntries = new List<HistoryEntry>();
 
         foreach (var line in history)
         {
-            var status = Enum.Parse<OrderStatus>(line["Status"]);
+            var status = broker == Broker.PaperTrading ? Enum.Parse<OrderStatus>(line["Status"]) : OrderStatus.Filled;
             if (status == OrderStatus.Rejected)
             {
                 continue;
@@ -283,12 +364,18 @@ public class TradingViewDataAssembler : MonoBehaviour
             var symbolStartIndex = symbol.LastIndexOf(':') + 1;
             symbol = symbol.Substring(symbolStartIndex, symbol.Length - symbolStartIndex);
 
+            // Ignore €/$ currency conversions (=cash in / cash out) for "real" brokers:
+            if (broker != Broker.PaperTrading && symbol == "EUR.USD")
+            {
+                continue;
+            }
+
             // Side:
             var side = line["Side"] == "Buy" ? Side.Long : Side.Short;
 
             // Type:
-            var typeString = line["Type"].Replace(" ", "");
-            var type = Enum.Parse<OrderType>(typeString);
+            var typeString = broker == Broker.PaperTrading ? line["Type"].Replace(" ", "") : "";
+            var type = broker == Broker.PaperTrading ? Enum.Parse<OrderType>(typeString) : OrderType.IBKR;
 
             // Amount:
             var qty = line["Qty"];
@@ -298,20 +385,31 @@ public class TradingViewDataAssembler : MonoBehaviour
             // Price:
             var fillPriceString = line["Fill Price"];
             fillPriceString = fillPriceString.Replace(" ", ""); // TradingView adds space instead of comma for numbers > 999, therefore need to remove it
-            var priceString = line["Limit Price"];
+            var priceString = broker == Broker.PaperTrading ? line["Limit Price"] : "";
             priceString = priceString.Replace(" ", ""); // TradingView adds space instead of comma for numbers > 999, therefore need to remove it
             var price = fillPriceString == string.Empty ? float.Parse(priceString, floatCulture) : float.Parse(fillPriceString, floatCulture);
             // necessary since some prices have more than 2 digits:
             price = Mathf.Round(price * 100f) / 100f;
+            
+            // TODO: solve more elegantly... f. e. via Order Status?
+            // Ignore cancelled stop orders (TradingView doesn't export the price for (cancelled) Stop Loss orders - which would lead to errors further below. Therefore skip these types of orders):
+            if (type == OrderType.Stop && fillPriceString == string.Empty && priceString == string.Empty)
+            {
+                continue;
+            }
 
             // Placing Time:
-            var placingTime = DateTime.Parse(line["Placing Time"]);
+            var placingTime = broker == Broker.PaperTrading ? DateTime.Parse(line["Placing Time"]) : DateTime.Parse(line["Time"]);
 
             // Closing Time:
-            var closingTime = DateTime.Parse(line["Closing Time"]);
+            var closingTime = broker == Broker.PaperTrading ? DateTime.Parse(line["Closing Time"]) : DateTime.Parse(line["Time"]);
 
             // Order Id:
-            var orderId = int.Parse(line["Order ID"]);
+            var orderId = broker == Broker.PaperTrading ? uint.Parse(line["Order ID"]) : 0;
+
+            // Commission:
+            var commissionString = broker == Broker.IBKR ? line["Commission"] : string.Empty;
+            var commission = broker == Broker.IBKR && commissionString != string.Empty ? float.Parse(commissionString, floatCulture) : 0.0f;
 
             var historyEntry = new HistoryEntry
             {
@@ -323,12 +421,13 @@ public class TradingViewDataAssembler : MonoBehaviour
                 status = status,
                 placingTime = placingTime,
                 closingTime = closingTime,
-                orderId = orderId
+                orderId = orderId,
+                commission = commission,
             };
             historyEntries.Add(historyEntry);
         }
 
-        historyEntries = historyEntries.OrderBy(entry => entry.placingTime).ToList();
+        historyEntries = broker == Broker.PaperTrading ? historyEntries.OrderBy(entry => entry.orderId).ToList() : historyEntries.OrderBy(entry => entry.placingTime).ToList();
 
         sb.AppendLine("Symbol, Side, Type, Amount, Price, Status, Time, Order Id");
         foreach (HistoryEntry historyEntry in historyEntries)
@@ -352,7 +451,7 @@ public class TradingViewDataAssembler : MonoBehaviour
         public float amount;
     }
 
-    List<PositionsEntry> GetPositionsEntries(CultureInfo floatCulture, List<Dictionary<string, string>> positions)
+    List<PositionsEntry> GetPositionsEntries(CultureInfo floatCulture, List<Dictionary<string, string>> positions, Broker broker)
     {
         var sb = new StringBuilder();
         var positionsEntries = new List<PositionsEntry>();
@@ -368,13 +467,15 @@ public class TradingViewDataAssembler : MonoBehaviour
             var side = line["Side"] == "Long" ? Side.Long : Side.Short;
 
             // Avg Fill price:
-            var entryPrice = float.Parse(line["Avg Fill Price"], floatCulture);
+            var entryPrice = float.Parse(broker == Broker.PaperTrading ? line["Avg Fill Price"] : line["Avg Price"], floatCulture);
 
             // Price target:
-            var hasPriceTarget = float.TryParse(line["Take Profit"], NumberStyles.Float, floatCulture, out var priceTarget);
+            var priceTarget = 0.0f;
+            var hasPriceTarget = broker == Broker.PaperTrading && float.TryParse(line["Take Profit"], NumberStyles.Float, floatCulture, out priceTarget);
 
             // Stop loss:
-            var hasStopLoss = float.TryParse(line["Stop Loss"], NumberStyles.Float, floatCulture, out var stopLoss);
+            var stopLoss = 0.0f;
+            var hasStopLoss = broker == Broker.PaperTrading && float.TryParse(line["Stop Loss"], NumberStyles.Float, floatCulture, out stopLoss);
 
             // Amount:
             var amount = float.Parse(line["Qty"], floatCulture);
@@ -400,6 +501,101 @@ public class TradingViewDataAssembler : MonoBehaviour
         Debug.Log(sb);
 
         return positionsEntries;
+    }
+    #endregion
+
+    #region Order Entries
+    // These are only to get Price Target and Stop Loss orders for IBKR Trades as well:
+    class OrderEntry
+    {
+        public string symbol;
+        public Side side;
+        public OrderType type;
+        public float amount;
+        public float limitPrice;
+        public OrderStatus status;
+        public DateTime time;
+    }
+
+    List<OrderEntry> GetOrderEntries(CultureInfo floatCulture, List<Dictionary<string, string>> orders, Broker broker)
+    {
+        var sb = new StringBuilder();
+        var orderEntries = new List<OrderEntry>();
+
+        if (broker != Broker.IBKR || orders == null)
+        {
+            return orderEntries;
+        }
+
+        foreach (var line in orders)
+        {
+            // Symbol:
+            var symbol = line["Symbol"];
+
+            // Side:
+            var sideString = line["Side"];
+            var side = sideString == "Buy" ? Side.Long : Side.Short;
+
+            // Type:
+            if (Enum.TryParse<OrderType>(line["IB Order Type"], out var type))
+            {
+                if (type != OrderType.Limit)
+                {
+                    continue;
+                }
+            }
+            else
+            {
+                continue;
+            }
+
+            // Amount:
+            var amountString = line["Filled/Remain"];
+            if (amountString != null)
+            {
+                var slashIndex = amountString.IndexOf('/');
+                if (slashIndex >= 0)
+                {
+                    amountString = amountString.Substring(slashIndex + 1, amountString.Length - (slashIndex + 1));
+                }
+            }
+            var amount = float.Parse(amountString, floatCulture);
+
+            // Price:
+            var priceString = line["Limit Price"];
+            var price = float.Parse(priceString, floatCulture);
+
+            // Status:
+            var statusString = line["Status"];
+            var status = statusString == "Working" ? OrderStatus.Working : statusString == "Filled" ? OrderStatus.Filled : OrderStatus.Cancelled;
+
+            // Time:
+            var time = DateTime.Parse(line["Last Update Time"]);
+
+            var orderEntry = new OrderEntry
+            {
+                symbol = symbol,
+                side = side,
+                type = type,
+                amount = amount,
+                limitPrice = price,
+                status = status,
+                time = time
+            };
+
+            orderEntries.Add(orderEntry);
+        }
+
+        orderEntries = orderEntries.OrderBy(entry => entry.time).ToList();
+
+        sb.AppendLine("Symbol, Side, Order Type, Amount, Limit Price, Status, Time, Order Id");
+        foreach (var orderEntry in orderEntries)
+        {
+            sb.AppendLine($"{orderEntry.symbol},{orderEntry.side},{orderEntry.type},{orderEntry.amount},{CapDecimalPlaces(orderEntry.limitPrice, floatCulture)},{orderEntry.status},{orderEntry.time}");
+        }
+        Debug.Log(sb);
+
+        return orderEntries;
     }
     #endregion
 
