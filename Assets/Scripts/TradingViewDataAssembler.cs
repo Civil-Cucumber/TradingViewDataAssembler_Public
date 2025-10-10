@@ -387,16 +387,16 @@ public class TradingViewDataAssembler : MonoBehaviour
             fillPriceString = fillPriceString.Replace(" ", ""); // TradingView adds space instead of comma for numbers > 999, therefore need to remove it
             var priceString = broker == Broker.PaperTrading ? line["Limit Price"] : "";
             priceString = priceString.Replace(" ", ""); // TradingView adds space instead of comma for numbers > 999, therefore need to remove it
-            var price = fillPriceString == string.Empty ? float.Parse(priceString, floatCulture) : float.Parse(fillPriceString, floatCulture);
-            // necessary since some prices have more than 2 digits:
-            price = Mathf.Round(price * 100f) / 100f;
             
-            // TODO: solve more elegantly... f. e. via Order Status?
-            // Ignore cancelled stop orders (TradingView doesn't export the price for (cancelled) Stop Loss orders - which would lead to errors further below. Therefore skip these types of orders):
-            if (type == OrderType.Stop && fillPriceString == string.Empty && priceString == string.Empty)
+            // Ignore cancelled stop & market orders (TradingView doesn't export the price for (cancelled) Stop Loss orders, and market orders don't have a price anyways - which would lead to errors further below. Therefore skip these types of orders):
+            if ((type == OrderType.Stop || type == OrderType.Market) && fillPriceString == string.Empty && priceString == string.Empty)
             {
                 continue;
             }
+            
+            var price = fillPriceString == string.Empty ? float.Parse(priceString, floatCulture) : float.Parse(fillPriceString, floatCulture);
+            // necessary since some prices have more than 2 digits:
+            price = Mathf.Round(price * 100f) / 100f;
 
             // Placing Time:
             var placingTime = broker == Broker.PaperTrading ? DateTime.Parse(line["Placing Time"]) : DateTime.Parse(line["Time"]);
