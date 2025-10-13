@@ -1,4 +1,6 @@
 {
-	"paperTradingJournalUrl": "",
-	"ibkrJournalUrl": ""
+	"tvPaperTradingJournalUrl": "",
+	"tvIbkrJournalUrl": "",
+	"interactiveBrokersUserId": "",
+	"interactiveBrokersJournalUrl": ""
 }

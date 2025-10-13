@@ -1,5 +1,6 @@
 public enum Broker
 {
-    PaperTrading = 0,
-    IBKR = 1
+    TV_PaperTrading = 0,
+    TV_IBKR = 1,
+    InteractiveBrokers = 2
 }

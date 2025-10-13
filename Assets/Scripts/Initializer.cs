@@ -9,7 +9,6 @@ public class Initializer : MonoBehaviour
 
     void Start()
     {
-        uiFeedback.InitializeInput();
         try
         {
             configManager.LoadConfig();
@@ -18,17 +17,19 @@ public class Initializer : MonoBehaviour
         {
             uiFeedback.FailedConversion("Config issue!", "Something went wrong while accessing/reading SettingsConfig.json");
         }
+        var hasInteractiveBrokersUserId = !string.IsNullOrEmpty(configManager.Config.interactiveBrokersUserId);
+        uiFeedback.InitializeInput(hasInteractiveBrokersUserId);
         ConvertData();
     }
 
     public void ConvertData()
     {
-        var loadSuccess = fileManager.OpenFiles(out var tradingViewData, uiFeedback);
+        var loadSuccess = fileManager.OpenFiles(out var tradingViewData, out var interactiveBrokersData, configManager.Config.interactiveBrokersUserId, uiFeedback);
         if (loadSuccess)
         {
             try
             {
-                dataAssembler.AssembleData(tradingViewData);
+                dataAssembler.AssembleData(tradingViewData, interactiveBrokersData);
             }
             catch
             {

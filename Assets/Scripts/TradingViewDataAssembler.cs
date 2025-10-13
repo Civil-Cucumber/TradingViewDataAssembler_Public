@@ -135,164 +135,307 @@ public class TradingViewDataAssembler : MonoBehaviour
         public float commission;
     }
 
-    public void AssembleData(TradingViewData tradingViewData)
+    public void AssembleData(TradingViewData tradingViewData, InteractiveBrokersData interactiveBrokersData)
     {
         var broker = (Broker)PlayerPrefs.GetInt(SAVED_BROKER_INDEX);
         var floatCulture = new CultureInfo("en-US");
-        var historyEntries = GetHistoryEntries(floatCulture, tradingViewData.history, broker);
-        var positionsEntries = GetPositionsEntries(floatCulture, tradingViewData.positions, broker);
-        var orderEntries = GetOrderEntries(floatCulture, tradingViewData.orders, broker);
 
         var sb = new StringBuilder();
         var trades = new List<Trade>();
+        var firstEntryTime = DateTime.MinValue;
 
-        var firstHistoryEntryTime = historyEntries.OrderBy(entry => entry.placingTime).FirstOrDefault().placingTime;
-
-        foreach (var historyEntry in historyEntries)
+        if (broker == Broker.TV_PaperTrading || broker == Broker.TV_IBKR)
         {
-            // look to which trade entry belongs:
-            var currentTrade = trades
-                .FirstOrDefault(trade => !trade.TradeCompleted && trade.symbol == historyEntry.symbol);
+            var historyEntries = GetHistoryEntries(floatCulture, tradingViewData.history, broker);
+            var positionsEntries = GetPositionsEntries(floatCulture, tradingViewData.positions, broker);
+            var orderEntries = GetOrderEntries(floatCulture, tradingViewData.orders, broker);
 
-            // if none found, start a new trade entry:
-            if (currentTrade == null)
-            {
-                currentTrade = new Trade
-                {
-                    symbol = historyEntry.symbol
-                };
-                trades.Add(currentTrade);
-            }
+            firstEntryTime = historyEntries.OrderBy(entry => entry.placingTime).FirstOrDefault().placingTime;
 
-            // Stop Loss:
-            if (historyEntry.type == OrderType.StopLoss)
+            foreach (var historyEntry in historyEntries)
             {
-                currentTrade.side = GetInvertedSide(historyEntry.side);
-                currentTrade.stopLosses.Add(historyEntry.GetOrder());
-                if (historyEntry.status == OrderStatus.Filled)
-                {
-                    var exitOrder = historyEntry.GetOrder();
-                    currentTrade.exits.Add(exitOrder);
-                }
-            }
-            // Price Target:
-            else if (historyEntry.type == OrderType.TakeProfit)
-            {
-                currentTrade.side = GetInvertedSide(historyEntry.side);
-                currentTrade.priceTargets.Add(historyEntry.GetOrder());
-                if (historyEntry.status == OrderStatus.Filled)
-                {
-                    var exitOrder = historyEntry.GetOrder();
-                    currentTrade.exits.Add(exitOrder);
-                }
-            }
-            // First buy in:
-            else if (currentTrade.FirstBuyIn)
-            {
-                if (historyEntry.status == OrderStatus.Filled)
-                {
-                    currentTrade.side = historyEntry.side;
-                    var entryOrder = historyEntry.GetOrder();
-                    currentTrade.entries.Add(entryOrder);
+                // look to which trade entry belongs:
+                var currentTrade = trades.FirstOrDefault(trade => !trade.TradeCompleted && trade.symbol == historyEntry.symbol);
 
-                    // Stop Loss + Price Target for IBKR:
-                    // TODO: filter cancelled / filled / working somehow? On the other hand then as soon as trade completed PT and SL wouldn't be available anymore...
-                    var relevantEntries = orderEntries.Where(entry => entry.symbol == historyEntry.symbol && entry.time >= historyEntry.placingTime).ToList();
-                    var priceTargets = relevantEntries.Where(entry => entry.side != historyEntry.side).ToList();
-                    foreach (var pt in priceTargets)
+                // if none found, start a new trade entry:
+                if (currentTrade == null)
+                {
+                    currentTrade = new Trade
                     {
-                        var ptOrder = new Order
+                        symbol = historyEntry.symbol
+                    };
+                    trades.Add(currentTrade);
+                }
+
+                // Stop Loss:
+                if (historyEntry.type == OrderType.StopLoss)
+                {
+                    currentTrade.side = GetInvertedSide(historyEntry.side);
+                    currentTrade.stopLosses.Add(historyEntry.GetOrder());
+                    if (historyEntry.status == OrderStatus.Filled)
+                    {
+                        var exitOrder = historyEntry.GetOrder();
+                        currentTrade.exits.Add(exitOrder);
+                    }
+                }
+                // Price Target:
+                else if (historyEntry.type == OrderType.TakeProfit)
+                {
+                    currentTrade.side = GetInvertedSide(historyEntry.side);
+                    currentTrade.priceTargets.Add(historyEntry.GetOrder());
+                    if (historyEntry.status == OrderStatus.Filled)
+                    {
+                        var exitOrder = historyEntry.GetOrder();
+                        currentTrade.exits.Add(exitOrder);
+                    }
+                }
+                // First buy in:
+                else if (currentTrade.FirstBuyIn)
+                {
+                    if (historyEntry.status == OrderStatus.Filled)
+                    {
+                        currentTrade.side = historyEntry.side;
+                        var entryOrder = historyEntry.GetOrder();
+                        currentTrade.entries.Add(entryOrder);
+
+                        // Stop Loss + Price Target for IBKR:
+                        // TODO: filter cancelled / filled / working somehow? On the other hand then as soon as trade completed PT and SL wouldn't be available anymore...
+                        var relevantEntries = orderEntries.Where(entry => entry.symbol == historyEntry.symbol && entry.time >= historyEntry.placingTime).ToList();
+                        var priceTargets = relevantEntries.Where(entry => entry.side != historyEntry.side).ToList();
+                        foreach (var pt in priceTargets)
                         {
-                            amount = pt.amount,
-                            price = pt.limitPrice,
-                            time = pt.time,
-                        };
-                        currentTrade.priceTargets.Add(ptOrder);
-                    }
-                    var stopLosses = relevantEntries.Where(entry => entry.side == historyEntry.side).ToList();
-                    foreach (var sl in stopLosses)
-                    {
-                        var slOrder = new Order
-                        {
-                            amount = sl.amount,
-                            price = sl.limitPrice,
-                            time = sl.time,
-                        };
-                        currentTrade.stopLosses.Add(slOrder);
-                    }
-                }
-            }
-            // Increase position:
-            else if (currentTrade.side == historyEntry.side)
-            {
-                if (historyEntry.status == OrderStatus.Filled || broker != Broker.PaperTrading)
-                {
-                    var entryOrder = historyEntry.GetOrder();
-                    currentTrade.entries.Add(entryOrder);
+                            var ptOrder = new Order
+                            {
+                                amount = pt.amount,
+                                price = pt.limitPrice,
+                                time = pt.time,
+                            };
+                            currentTrade.priceTargets.Add(ptOrder);
+                        }
 
-                    // "Reset" trade if first entry added, but has already exit position from before entry (= older trade where entry position info is now missing):
-                    if (currentTrade.entries.Count == 1 && currentTrade.exits.Count > 0)
+                        var stopLosses = relevantEntries.Where(entry => entry.side == historyEntry.side).ToList();
+                        foreach (var sl in stopLosses)
+                        {
+                            var slOrder = new Order
+                            {
+                                amount = sl.amount,
+                                price = sl.limitPrice,
+                                time = sl.time,
+                            };
+                            currentTrade.stopLosses.Add(slOrder);
+                        }
+                    }
+                }
+                // Increase position:
+                else if (currentTrade.side == historyEntry.side)
+                {
+                    if (historyEntry.status == OrderStatus.Filled || broker != Broker.TV_PaperTrading)
                     {
-                        currentTrade.exits.RemoveAll(x => x.time < currentTrade.StartTradeTime);
-                        currentTrade.priceTargets.RemoveAll(x => x.time < currentTrade.StartTradeTime);
-                        currentTrade.stopLosses.RemoveAll(x => x.time < currentTrade.StartTradeTime);
+                        var entryOrder = historyEntry.GetOrder();
+                        currentTrade.entries.Add(entryOrder);
+
+                        // "Reset" trade if first entry added, but has already exit position from before entry (= older trade where entry position info is now missing):
+                        if (currentTrade.entries.Count == 1 && currentTrade.exits.Count > 0)
+                        {
+                            currentTrade.exits.RemoveAll(x => x.time < currentTrade.StartTradeTime);
+                            currentTrade.priceTargets.RemoveAll(x => x.time < currentTrade.StartTradeTime);
+                            currentTrade.stopLosses.RemoveAll(x => x.time < currentTrade.StartTradeTime);
+                        }
+                    }
+                }
+                // Decrease / Exit position:
+                else
+                {
+                    if (historyEntry.status == OrderStatus.Filled || broker != Broker.TV_PaperTrading)
+                    {
+                        var exitOrder = historyEntry.GetOrder();
+                        currentTrade.exits.Add(exitOrder);
                     }
                 }
             }
-            // Decrease / Exit position:
-            else
+
+
+            trades = trades.Where(entry => entry.entries.Count > 0).OrderByDescending(entry => entry.StartTradeTime).ToList();
+
+            // Add price targets and stop losses for active trades:
+            var remainingPositionsEntries = new List<PositionsEntry>(positionsEntries);
+            foreach (var trade in trades)
             {
-                if (historyEntry.status == OrderStatus.Filled || broker != Broker.PaperTrading)
+                if (!trade.TradeCompleted)
                 {
-                    var exitOrder = historyEntry.GetOrder();
-                    currentTrade.exits.Add(exitOrder);
+                    var activePosition = remainingPositionsEntries.FirstOrDefault(entry => entry.symbol == trade.symbol);
+
+                    if (activePosition != null)
+                    {
+                        if (activePosition.stopLoss > 0)
+                        {
+                            var stopLossOrder = new Order
+                            {
+                                amount = activePosition.amount,
+                                price = activePosition.stopLoss
+                            };
+                            trade.stopLosses.Add(stopLossOrder);
+                        }
+
+                        if (activePosition.priceTarget > 0)
+                        {
+                            var priceTargetOrder = new Order
+                            {
+                                amount = activePosition.amount,
+                                price = activePosition.priceTarget
+                            };
+                            trade.priceTargets.Add(priceTargetOrder);
+                        }
+
+                        remainingPositionsEntries.Remove(activePosition);
+                    }
                 }
             }
         }
-
-
-        trades = trades
-            .Where(entry => entry.entries.Count > 0)
-            .OrderByDescending(entry => entry.StartTradeTime)
-            .ToList();
-
-        // Add price targets and stop losses for active trades:
-        var remainingPositionsEntries = new List<PositionsEntry>(positionsEntries);
-        foreach (var trade in trades)
+        else if (broker == Broker.InteractiveBrokers)
         {
-            if (!trade.TradeCompleted)
+            var entries = GetInteractiveBrokersEntries(floatCulture, interactiveBrokersData.trades);
+            // var positionsEntries = GetPositionsEntries(floatCulture, tradingViewData.positions, broker);
+            // var orderEntries = GetOrderEntries(floatCulture, tradingViewData.orders, broker);
+            //
+            firstEntryTime = entries.OrderBy(entry => entry.closingTime).FirstOrDefault().closingTime;
+            
+            foreach (var listEntry in entries)
             {
-                var activePosition = remainingPositionsEntries
-                    .FirstOrDefault(entry => entry.symbol == trade.symbol);
-
-                if (activePosition != null)
+                // look to which trade entry belongs:
+                var currentTrade = trades.FirstOrDefault(trade => !trade.TradeCompleted && trade.symbol == listEntry.symbol);
+            
+                // if none found, start a new trade entry:
+                if (currentTrade == null)
                 {
-                    if (activePosition.stopLoss > 0)
+                    currentTrade = new Trade
                     {
-                        var stopLossOrder = new Order
-                        {
-                            amount = activePosition.amount,
-                            price = activePosition.stopLoss
-                        };
-                        trade.stopLosses.Add(stopLossOrder);
-                    }
-                    if (activePosition.priceTarget > 0)
-                    {
-                        var priceTargetOrder = new Order
-                        {
-                            amount = activePosition.amount,
-                            price = activePosition.priceTarget
-                        };
-                        trade.priceTargets.Add(priceTargetOrder);
-                    }
-                    remainingPositionsEntries.Remove(activePosition);
+                        symbol = listEntry.symbol
+                    };
+                    trades.Add(currentTrade);
                 }
-            }
+            
+            //     // Stop Loss:
+            //     if (historyEntry.type == OrderType.StopLoss)
+            //     {
+            //         currentTrade.side = GetInvertedSide(historyEntry.side);
+            //         currentTrade.stopLosses.Add(historyEntry.GetOrder());
+            //         if (historyEntry.status == OrderStatus.Filled)
+            //         {
+            //             var exitOrder = historyEntry.GetOrder();
+            //             currentTrade.exits.Add(exitOrder);
+            //         }
+            //     }
+            //     // Price Target:
+            //     else if (historyEntry.type == OrderType.TakeProfit)
+            //     {
+            //         currentTrade.side = GetInvertedSide(historyEntry.side);
+            //         currentTrade.priceTargets.Add(historyEntry.GetOrder());
+            //         if (historyEntry.status == OrderStatus.Filled)
+            //         {
+            //             var exitOrder = historyEntry.GetOrder();
+            //             currentTrade.exits.Add(exitOrder);
+            //         }
+            //     }
+            //     // First buy in:
+            //     else if (currentTrade.FirstBuyIn)...
+                    if (currentTrade.FirstBuyIn)
+                    {
+                        currentTrade.side = listEntry.side;
+                        var entryOrder = listEntry.GetOrder();
+                        currentTrade.entries.Add(entryOrder);
+                
+                        // Stop Loss + Price Target for IBKR:
+                        // TODO: filter cancelled / filled / working somehow? On the other hand then as soon as trade completed PT and SL wouldn't be available anymore...
+                        // var relevantEntries = orderEntries.Where(entry => entry.symbol == listEntry.symbol && entry.time >= listEntry.closingTime).ToList();
+                        // var priceTargets = relevantEntries.Where(entry => entry.side != listEntry.side).ToList();
+                        // foreach (var pt in priceTargets)
+                        // {
+                        //     var ptOrder = new Order
+                        //     {
+                        //         amount = pt.amount,
+                        //         price = pt.limitPrice,
+                        //         time = pt.time,
+                        //     };
+                        //     currentTrade.priceTargets.Add(ptOrder);
+                        // }
+                
+                        // var stopLosses = relevantEntries.Where(entry => entry.side == historyEntry.side).ToList();
+                        // foreach (var sl in stopLosses)
+                        // {
+                        //     var slOrder = new Order
+                        //     {
+                        //         amount = sl.amount,
+                        //         price = sl.limitPrice,
+                        //         time = sl.time,
+                        //     };
+                        //     currentTrade.stopLosses.Add(slOrder);
+                        // }
+                    }
+                    // Increase position:
+                    else if (currentTrade.side == listEntry.side)
+                    {
+                        var entryOrder = listEntry.GetOrder();
+                        currentTrade.entries.Add(entryOrder);
+                
+                        // "Reset" trade if first entry added, but has already exit position from before entry (= older trade where entry position info is now missing):
+                        if (currentTrade.entries.Count == 1 && currentTrade.exits.Count > 0)
+                        {
+                            currentTrade.exits.RemoveAll(x => x.time < currentTrade.StartTradeTime);
+                            currentTrade.priceTargets.RemoveAll(x => x.time < currentTrade.StartTradeTime);
+                            currentTrade.stopLosses.RemoveAll(x => x.time < currentTrade.StartTradeTime);
+                        }
+                    }
+                    // Decrease / Exit position:
+                    else
+                    {
+                        var exitOrder = listEntry.GetOrder();
+                        currentTrade.exits.Add(exitOrder);
+                    }
+                }
+            
+            
+            trades = trades.Where(entry => entry.entries.Count > 0).OrderByDescending(entry => entry.StartTradeTime).ToList();
+            
+            // // Add price targets and stop losses for active trades:
+            // var remainingPositionsEntries = new List<PositionsEntry>(positionsEntries);
+            // foreach (var trade in trades)
+            // {
+            //     if (!trade.TradeCompleted)
+            //     {
+            //         var activePosition = remainingPositionsEntries.FirstOrDefault(entry => entry.symbol == trade.symbol);
+            //
+            //         if (activePosition != null)
+            //         {
+            //             if (activePosition.stopLoss > 0)
+            //             {
+            //                 var stopLossOrder = new Order
+            //                 {
+            //                     amount = activePosition.amount,
+            //                     price = activePosition.stopLoss
+            //                 };
+            //                 trade.stopLosses.Add(stopLossOrder);
+            //             }
+            //
+            //             if (activePosition.priceTarget > 0)
+            //             {
+            //                 var priceTargetOrder = new Order
+            //                 {
+            //                     amount = activePosition.amount,
+            //                     price = activePosition.priceTarget
+            //                 };
+            //                 trade.priceTargets.Add(priceTargetOrder);
+            //             }
+            //
+            //             remainingPositionsEntries.Remove(activePosition);
+            //         }
+            //     }
+            // }
         }
 
         // sort by entry time:
         trades = trades
-            .Where(entry => entry.exits.Count == 0 || entry.exits.Min(x => x.time) >= firstHistoryEntryTime)
+            .Where(entry => entry.exits.Count == 0 || entry.exits.Min(x => x.time) >= firstEntryTime)
             .OrderByDescending(entry => entry.StartTradeTime)
             .ToList();
 
@@ -315,7 +458,7 @@ public class TradingViewDataAssembler : MonoBehaviour
         GUIUtility.systemCopyBuffer = sb.ToString();
         Debug.Log("Copied to clipboard!");
 
-        uiFeedback.FinishedConversion(tradingViewData, sb.ToString());
+        uiFeedback.FinishedConversion(tradingViewData, interactiveBrokersData, sb.ToString());
     }
     #endregion
 
@@ -353,7 +496,7 @@ public class TradingViewDataAssembler : MonoBehaviour
 
         foreach (var line in history)
         {
-            var status = broker == Broker.PaperTrading ? Enum.Parse<OrderStatus>(line["Status"]) : OrderStatus.Filled;
+            var status = broker == Broker.TV_PaperTrading ? Enum.Parse<OrderStatus>(line["Status"]) : OrderStatus.Filled;
             if (status == OrderStatus.Rejected)
             {
                 continue;
@@ -365,7 +508,7 @@ public class TradingViewDataAssembler : MonoBehaviour
             symbol = symbol.Substring(symbolStartIndex, symbol.Length - symbolStartIndex);
 
             // Ignore €/$ currency conversions (=cash in / cash out) for "real" brokers:
-            if (broker != Broker.PaperTrading && symbol == "EUR.USD")
+            if (broker != Broker.TV_PaperTrading && symbol == "EUR.USD")
             {
                 continue;
             }
@@ -374,8 +517,8 @@ public class TradingViewDataAssembler : MonoBehaviour
             var side = line["Side"] == "Buy" ? Side.Long : Side.Short;
 
             // Type:
-            var typeString = broker == Broker.PaperTrading ? line["Type"].Replace(" ", "") : "";
-            var type = broker == Broker.PaperTrading ? Enum.Parse<OrderType>(typeString) : OrderType.IBKR;
+            var typeString = broker == Broker.TV_PaperTrading ? line["Type"].Replace(" ", "") : "";
+            var type = broker == Broker.TV_PaperTrading ? Enum.Parse<OrderType>(typeString) : OrderType.IBKR;
 
             // Amount:
             var qty = line["Qty"];
@@ -385,7 +528,7 @@ public class TradingViewDataAssembler : MonoBehaviour
             // Price:
             var fillPriceString = line["Fill Price"];
             fillPriceString = fillPriceString.Replace(" ", ""); // TradingView adds space instead of comma for numbers > 999, therefore need to remove it
-            var priceString = broker == Broker.PaperTrading ? line["Limit Price"] : "";
+            var priceString = broker == Broker.TV_PaperTrading ? line["Limit Price"] : "";
             priceString = priceString.Replace(" ", ""); // TradingView adds space instead of comma for numbers > 999, therefore need to remove it
             
             // Ignore cancelled stop & market orders (TradingView doesn't export the price for (cancelled) Stop Loss orders, and market orders don't have a price anyways - which would lead to errors further below. Therefore skip these types of orders):
@@ -399,17 +542,17 @@ public class TradingViewDataAssembler : MonoBehaviour
             price = Mathf.Round(price * 100f) / 100f;
 
             // Placing Time:
-            var placingTime = broker == Broker.PaperTrading ? DateTime.Parse(line["Placing Time"]) : DateTime.Parse(line["Time"]);
+            var placingTime = broker == Broker.TV_PaperTrading ? DateTime.Parse(line["Placing Time"]) : DateTime.Parse(line["Time"]);
 
             // Closing Time:
-            var closingTime = broker == Broker.PaperTrading ? DateTime.Parse(line["Closing Time"]) : DateTime.Parse(line["Time"]);
+            var closingTime = broker == Broker.TV_PaperTrading ? DateTime.Parse(line["Closing Time"]) : DateTime.Parse(line["Time"]);
 
             // Order Id:
-            var orderId = broker == Broker.PaperTrading ? uint.Parse(line["Order ID"]) : 0;
+            var orderId = broker == Broker.TV_PaperTrading ? uint.Parse(line["Order ID"]) : 0;
 
             // Commission:
-            var commissionString = broker == Broker.IBKR ? line["Commission"] : string.Empty;
-            var commission = broker == Broker.IBKR && commissionString != string.Empty ? float.Parse(commissionString, floatCulture) : 0.0f;
+            var commissionString = broker == Broker.TV_IBKR ? line["Commission"] : string.Empty;
+            var commission = broker == Broker.TV_IBKR && commissionString != string.Empty ? float.Parse(commissionString, floatCulture) : 0.0f;
 
             var historyEntry = new HistoryEntry
             {
@@ -427,7 +570,7 @@ public class TradingViewDataAssembler : MonoBehaviour
             historyEntries.Add(historyEntry);
         }
 
-        historyEntries = broker == Broker.PaperTrading ? historyEntries.OrderBy(entry => entry.orderId).ToList() : historyEntries.OrderBy(entry => entry.placingTime).ToList();
+        historyEntries = broker == Broker.TV_PaperTrading ? historyEntries.OrderBy(entry => entry.orderId).ToList() : historyEntries.OrderBy(entry => entry.placingTime).ToList();
 
         sb.AppendLine("Symbol, Side, Type, Amount, Price, Status, Time, Order Id");
         foreach (HistoryEntry historyEntry in historyEntries)
@@ -467,15 +610,15 @@ public class TradingViewDataAssembler : MonoBehaviour
             var side = line["Side"] == "Long" ? Side.Long : Side.Short;
 
             // Avg Fill price:
-            var entryPrice = float.Parse(broker == Broker.PaperTrading ? line["Avg Fill Price"] : line["Avg Price"], floatCulture);
+            var entryPrice = float.Parse(broker == Broker.TV_PaperTrading ? line["Avg Fill Price"] : line["Avg Price"], floatCulture);
 
             // Price target:
             var priceTarget = 0.0f;
-            var hasPriceTarget = broker == Broker.PaperTrading && float.TryParse(line["Take Profit"], NumberStyles.Float, floatCulture, out priceTarget);
+            var hasPriceTarget = broker == Broker.TV_PaperTrading && float.TryParse(line["Take Profit"], NumberStyles.Float, floatCulture, out priceTarget);
 
             // Stop loss:
             var stopLoss = 0.0f;
-            var hasStopLoss = broker == Broker.PaperTrading && float.TryParse(line["Stop Loss"], NumberStyles.Float, floatCulture, out stopLoss);
+            var hasStopLoss = broker == Broker.TV_PaperTrading && float.TryParse(line["Stop Loss"], NumberStyles.Float, floatCulture, out stopLoss);
 
             // Amount:
             var amount = float.Parse(line["Qty"], floatCulture);
@@ -522,7 +665,7 @@ public class TradingViewDataAssembler : MonoBehaviour
         var sb = new StringBuilder();
         var orderEntries = new List<OrderEntry>();
 
-        if (broker != Broker.IBKR || orders == null)
+        if (broker != Broker.TV_IBKR || orders == null)
         {
             return orderEntries;
         }
@@ -599,6 +742,100 @@ public class TradingViewDataAssembler : MonoBehaviour
     }
     #endregion
 
+    #region Interactive Brokers
+    class InteractiveBrokersEntry
+    {
+        public string symbol;
+        public Side side;
+        public float amount;
+        public float price;
+        public DateTime closingTime;
+        public float commission;
+
+        public Order GetOrder()
+        {
+            return new Order()
+            {
+                amount = amount,
+                price = price,
+                time = closingTime,
+                commission = commission,
+            };
+        }
+    }
+
+    List<InteractiveBrokersEntry> GetInteractiveBrokersEntries(CultureInfo floatCulture, List<Dictionary<string, string>> trades)
+    {
+        var sb = new StringBuilder();
+        var interactiveBrokersEntries = new List<InteractiveBrokersEntry>();
+
+        foreach (var line in trades)
+        {
+            if (line["Header"] != "Data")
+            {
+                continue;
+            }
+            
+            // Symbol:
+            var symbol = line["Symbol"];
+        
+            // Amount:
+            var qty = line["Quantity"];
+            // qty = qty.Replace(" ", ""); // TradingView adds space instead of comma for numbers > 999, therefore need to remove it
+            var amount = float.Parse(qty, floatCulture);
+            
+            // Side:
+            var side = amount < 0 ? Side.Short : Side.Long;
+        
+            // Price:
+            var priceString = line["T. Price"];
+            // priceString = priceString.Replace(" ", ""); // TradingView adds space instead of comma for numbers > 999, therefore need to remove it
+            
+            // Ignore cancelled stop & market orders (TradingView doesn't export the price for (cancelled) Stop Loss orders, and market orders don't have a price anyways - which would lead to errors further below. Therefore skip these types of orders):
+            // if ((type == OrderType.Stop || type == OrderType.Market) && fillPriceString == string.Empty && priceString == string.Empty)
+            // {
+                // continue;
+            // }
+            
+            var price = float.Parse(priceString, floatCulture);
+            // necessary since some prices have more than 2 digits:
+            price = Mathf.Round(price * 100f) / 100f;
+        
+            // Closing Time:
+            var closingTime = DateTime.Parse(line["Date/Time"]);
+        
+            // Order Id:
+            // var orderId = broker == Broker.TV_PaperTrading ? uint.Parse(line["Order ID"]) : 0;
+        
+            // Commission:
+            var commissionString = line["Comm/Fee"];
+            var commission = commissionString != string.Empty ? float.Parse(commissionString, floatCulture) : 0.0f;
+        
+            var interactiveBrokersEntry = new InteractiveBrokersEntry
+            {
+                symbol = symbol,
+                side = side,
+                amount = Math.Abs(amount),
+                price = price,
+                closingTime = closingTime,
+                commission = commission,
+            };
+            interactiveBrokersEntries.Add(interactiveBrokersEntry);
+        }
+        
+        interactiveBrokersEntries = interactiveBrokersEntries.OrderBy(entry => entry.closingTime).ToList();
+        
+        sb.AppendLine("Symbol, Side, Amount, Price, Time");
+        foreach (InteractiveBrokersEntry interactiveBrokersEntryEntry in interactiveBrokersEntries)
+        {
+            sb.AppendLine($"{interactiveBrokersEntryEntry.symbol},{interactiveBrokersEntryEntry.side},{interactiveBrokersEntryEntry.amount},{interactiveBrokersEntryEntry.price},{interactiveBrokersEntryEntry.closingTime}");
+        }
+        Debug.Log(sb);
+
+        return interactiveBrokersEntries;
+    }
+    #endregion   
+    
     #region Helping Functions
     Side GetInvertedSide(Side side)
     {

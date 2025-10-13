@@ -24,6 +24,7 @@ public class UIFeedback : MonoBehaviour
     public ToggleGroup toggleGroup;
     public Toggle paperTrading;
     public Toggle ibkr;
+    public Toggle interactiveBrokers;
     
     // ConfigManager:
     public ConfigManager configManager;
@@ -31,8 +32,10 @@ public class UIFeedback : MonoBehaviour
     bool isClosing = false;
 
     // Folder:
-    public void InitializeInput()
+    public void InitializeInput(bool hasInteractiveBrokersId)
     {
+        interactiveBrokers.gameObject.SetActive(hasInteractiveBrokersId);
+        
         var folderPath = PlayerPrefs.GetString(SAVED_FOLDER_KEY);
         if (folderPath != "")
         {
@@ -41,6 +44,10 @@ public class UIFeedback : MonoBehaviour
         OnUpdateFolderPath(folderPath);
 
         var brokerIndex = PlayerPrefs.GetInt(SAVED_BROKER_INDEX);
+        if ((Broker)brokerIndex == Broker.InteractiveBrokers && !hasInteractiveBrokersId)
+        {
+            brokerIndex = (int)Broker.TV_PaperTrading;
+        }
         OnUpdateBroker(brokerIndex);
     }
 
@@ -50,11 +57,14 @@ public class UIFeedback : MonoBehaviour
         switch (brokerIndex)
         {
             default:
-            case (int)Broker.PaperTrading:
+            case (int)Broker.TV_PaperTrading:
                 paperTrading.SetIsOnWithoutNotify(true);
                 break;
-            case (int)Broker.IBKR:
+            case (int)Broker.TV_IBKR:
                 ibkr.SetIsOnWithoutNotify(true);
+                break;
+            case (int)Broker.InteractiveBrokers:
+                interactiveBrokers.SetIsOnWithoutNotify(true);
                 break;
         }
         PlayerPrefs.SetInt(SAVED_BROKER_INDEX, brokerIndex);
@@ -74,15 +84,25 @@ public class UIFeedback : MonoBehaviour
     }
 
     // Status:
-    public void FinishedConversion(TradingViewData tradingViewData, string debugText)
+    public void FinishedConversion(TradingViewData tradingViewData, InteractiveBrokersData interactiveBrokersData, string debugText)
     {
+        var brokerIndex = PlayerPrefs.GetInt(SAVED_BROKER_INDEX);
+        
         var sb = new StringBuilder();
 
         sb.AppendLine("Copied to clipboard!");
         sb.AppendLine("<size=35%><color=#ABABAB>");
-        sb.AppendLine($"{tradingViewData.historyFileName}");
-        sb.AppendLine($"{tradingViewData.positionsFileName}");
-        sb.AppendLine($"{tradingViewData.ordersFileName}");
+
+        if ((Broker)brokerIndex == Broker.InteractiveBrokers)
+        {
+            sb.AppendLine($"{interactiveBrokersData.fileName}");
+        }
+        else
+        {
+            sb.AppendLine($"{tradingViewData.historyFileName}");
+            sb.AppendLine($"{tradingViewData.positionsFileName}");
+            sb.AppendLine($"{tradingViewData.ordersFileName}");
+        }
         sb.AppendLine("<color=white>");
         sb.AppendLine("<size=50%>Click or press Esc / Return / Space to close the app.");
 
@@ -130,7 +150,19 @@ public class UIFeedback : MonoBehaviour
         {
             isClosing = true;
             var broker = (Broker)PlayerPrefs.GetInt(SAVED_BROKER_INDEX);
-            var tradingJournalURL = broker == Broker.PaperTrading ? configManager.Config.paperTradingJournalUrl : configManager.Config.ibkrJournalUrl;
+            var tradingJournalURL = configManager.Config.tvPaperTradingJournalUrl;
+            switch (broker)
+            {
+                case Broker.TV_PaperTrading:
+                    tradingJournalURL = configManager.Config.tvPaperTradingJournalUrl;
+                    break;
+                case Broker.TV_IBKR:
+                    tradingJournalURL = configManager.Config.tvIbkrJournalUrl;
+                    break;
+                case Broker.InteractiveBrokers:
+                    tradingJournalURL = configManager.Config.interactiveBrokersJournalUrl;
+                    break;
+            }
             if (tradingJournalURL != string.Empty)
             {
                 Application.OpenURL(tradingJournalURL);

@@ -3,32 +3,60 @@ using System.Text.RegularExpressions;
 
 public class CsvReader
 {
-    static string SPLIT_RE = @",(?=(?:[^""]*""[^""]*"")*(?![^""]*""))";
-    static string LINE_SPLIT_RE = @"\r\n|\n\r|\n|\r";
-    static char[] TRIM_CHARS = { '\"' };
+    static readonly Regex CsvSplit = new(@",(?=(?:[^""]*""[^""]*"")*[^""]*$)");
+    static readonly Regex LineBreaks = new(@"\r?\n");
+    static readonly Regex TrailingMarkers = new(@";[A-Z]*\s*$");              // ;, ;O, ;IA, ...
+    static readonly Regex WholeLineQuotes = new(@"^\s*""(.*)""\s*$", RegexOptions.Singleline);
+    static readonly char[] TrimChars = { '"' };
+    
+    static string NormalizeLine(string line)
+    {
+        if (string.IsNullOrWhiteSpace(line)) return line;
+
+        // 1) ;*, ;O, ;IA, ... entfernen
+        line = TrailingMarkers.Replace(line, "");
+
+        // 2) ganze Zeile in Quotes?
+        var m = WholeLineQuotes.Match(line);
+        if (m.Success)
+        {
+            // 2a) äußere Quotes ab
+            line = m.Groups[1].Value;
+            // 3) verdoppelte Quotes zu einfachen
+            line = line.Replace(@"""""", @"""");
+        }
+
+        return line;
+    }
 
     public static List<Dictionary<string, string>> Read(string text)
     {
         var list = new List<Dictionary<string, string>>();
+        var lines = LineBreaks.Split(text);
+        if (lines.Length == 0) return list;
 
-        var lines = Regex.Split(text, LINE_SPLIT_RE);
+        // Header normalisieren
+        var headerLine = NormalizeLine(lines[0]);
+        if (string.IsNullOrWhiteSpace(headerLine)) return list;
+        var header = CsvSplit.Split(headerLine);
 
-        if (lines.Length <= 1) return list;
-
-        var header = Regex.Split(lines[0], SPLIT_RE);
-        for (var i = 1; i < lines.Length; i++)
+        for (int i = 1; i < lines.Length; i++)
         {
+            var line = NormalizeLine(lines[i]);
+            if (string.IsNullOrWhiteSpace(line)) continue;
 
-            var values = Regex.Split(lines[i], SPLIT_RE);
-            if (values.Length == 0 || values[0] == "") continue;
+            var values = CsvSplit.Split(line);
+            if (values.Length == 0 || string.IsNullOrEmpty(values[0])) continue;
 
-            var entry = new Dictionary<string, string>();
-            for (var j = 0; j < header.Length && j < values.Length; j++)
+            var entry = new Dictionary<string, string>(header.Length);
+            for (int j = 0; j < header.Length && j < values.Length; j++)
             {
-                string value = values[j];
-                value = value.TrimStart(TRIM_CHARS).TrimEnd(TRIM_CHARS).Replace("\\", "");
-                string finalValue = value;
-                entry[header[j]] = finalValue;
+                var v = values[j].Trim();
+                // Feldweise Quotes entfernen + interne "" ent-escapen
+                if (v.Length >= 2 && v[0] == '"' && v[^1] == '"')
+                    v = v.Substring(1, v.Length - 2).Replace(@"""""", @"""");
+
+                entry[header[j]] = v;
             }
             list.Add(entry);
         }
