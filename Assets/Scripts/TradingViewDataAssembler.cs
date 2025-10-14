@@ -295,7 +295,7 @@ public class TradingViewDataAssembler : MonoBehaviour
         else if (broker == Broker.InteractiveBrokers)
         {
             var entries = GetInteractiveBrokersEntries(floatCulture, interactiveBrokersData.trades);
-            // var positionsEntries = GetPositionsEntries(floatCulture, tradingViewData.positions, broker);
+            var interactiveBrokersPositionsEntries = GetInteractiveBrokersPositionsEntries(floatCulture, interactiveBrokersData.positions);
             // var orderEntries = GetOrderEntries(floatCulture, tradingViewData.orders, broker);
             //
             firstEntryTime = entries.OrderBy(entry => entry.closingTime).FirstOrDefault().closingTime;
@@ -833,6 +833,65 @@ public class TradingViewDataAssembler : MonoBehaviour
         Debug.Log(sb);
 
         return interactiveBrokersEntries;
+    }
+    
+    class InteractiveBrokersPositionsEntry
+    {
+        public string symbol;
+        public Side side;
+        public float avgFillPrice;
+        public float priceTarget;
+        public float stopLoss;
+        public float amount;
+    }
+
+    List<InteractiveBrokersPositionsEntry> GetInteractiveBrokersPositionsEntries(CultureInfo floatCulture, List<Dictionary<string, string>> positions)
+    {
+        var sb = new StringBuilder();
+        var positionsEntries = new List<InteractiveBrokersPositionsEntry>();
+
+        foreach (var line in positions)
+        {
+            if (line["Header"] != "Data")
+            {
+                continue;
+            }
+            
+            // Symbol:
+            var symbol = line["Symbol"];
+        
+            // Amount:
+            var qty = line["Quantity"];
+            // qty = qty.Replace(" ", ""); // TradingView adds space instead of comma for numbers > 999, therefore need to remove it
+            var amount = float.Parse(qty, floatCulture);
+            
+            // Side:
+            var side = amount < 0 ? Side.Short : Side.Long;
+
+            // Avg Fill price:
+            var entryPrice = float.Parse(line["Cost Price"], floatCulture);
+
+            var positionsEntry = new InteractiveBrokersPositionsEntry
+            {
+                symbol = symbol,
+                side = side,
+                avgFillPrice = entryPrice,
+                priceTarget = 0,
+                stopLoss = 0,
+                amount = amount
+            };
+
+            positionsEntries.Add(positionsEntry);
+        }
+
+        sb.AppendLine("Symbol, Side, Entry, Price Target, Stop Loss, Amount");
+        foreach (var positionsEntry in positionsEntries)
+        {
+            sb.AppendLine($"{positionsEntry.symbol},{positionsEntry.side},{CapDecimalPlaces(positionsEntry.avgFillPrice, floatCulture)},{CapDecimalPlaces(positionsEntry.priceTarget, floatCulture)},{CapDecimalPlaces(positionsEntry.stopLoss, floatCulture)},{positionsEntry.amount}");
+        }
+        Debug.Log(sb);
+
+        return positionsEntries;
     }
     #endregion   
     

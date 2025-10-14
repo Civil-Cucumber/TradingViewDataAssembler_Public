@@ -133,26 +133,43 @@ public class FileManager : MonoBehaviour
             {
                 var interactiveBrokersCsv = File.ReadAllText(folderPath + Path.DirectorySeparatorChar + interactiveBrokersFileName);
                 
-                const string startTag = "Trades,Header";
-                const string endTag   = "Deposits & Withdrawals,Header";
+                const string tradesStartText = "Trades,Header";
+                const string tradesEndText   = "Deposits & Withdrawals,Header";
+                const string positionsStartText = "Open Positions,Header";
+                const string positionsEndText = "Forex Balances,Header";
                 
-                var start = interactiveBrokersCsv.IndexOf(startTag, StringComparison.Ordinal);
-                if (start < 0)
+                var tradesStartIndex = interactiveBrokersCsv.IndexOf(tradesStartText, StringComparison.Ordinal);
+                if (tradesStartIndex < 0)
                 {
-                    throw new InvalidOperationException("Start-Header not found.");
+                    throw new InvalidOperationException("tradesStartText not found.");
                 }
 
-                var end = interactiveBrokersCsv.IndexOf(endTag, start + startTag.Length, StringComparison.Ordinal);
-                if (end < 0)
+                var tradesEndIndex = interactiveBrokersCsv.IndexOf(tradesEndText, tradesStartIndex + tradesStartText.Length, StringComparison.Ordinal);
+                if (tradesEndIndex < 0)
                 {
-                    end = interactiveBrokersCsv.Length;
+                    tradesEndIndex = interactiveBrokersCsv.Length;
+                }
+                
+                var positionsStartIndex = interactiveBrokersCsv.IndexOf(positionsStartText, StringComparison.Ordinal);
+                if (positionsStartIndex < 0)
+                {
+                    throw new InvalidOperationException("positionsStartText not found.");
                 }
 
-                var ibTradesCsv = interactiveBrokersCsv.Substring(start, end - start);
+                var positionsEndIndex = interactiveBrokersCsv.IndexOf(positionsEndText, positionsStartIndex + positionsStartText.Length, StringComparison.Ordinal);
+                if (positionsEndIndex < 0)
+                {
+                    positionsEndIndex = interactiveBrokersCsv.Length;
+                }
+
+                var ibTradesCsv = interactiveBrokersCsv.Substring(tradesStartIndex, tradesEndIndex - tradesStartIndex);
+                var ibPositionsCsv = interactiveBrokersCsv.Substring(positionsStartIndex, positionsEndIndex - positionsStartIndex);
+                Debug.Log(ibPositionsCsv);
                 
                 interactiveBrokersData = new InteractiveBrokersData
                 {
                     trades = CsvReader.Read(ibTradesCsv),
+                    positions = CsvReader.Read(ibPositionsCsv),
                     
                     fileName = interactiveBrokersFileName
                 };
@@ -213,6 +230,7 @@ public class FileManager : MonoBehaviour
     public class InteractiveBrokersData
     {
         public List<Dictionary<string, string>> trades;
+        public List<Dictionary<string, string>> positions;
 
         public string fileName;
     }
