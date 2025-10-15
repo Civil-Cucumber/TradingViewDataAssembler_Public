@@ -150,7 +150,10 @@ public class TradingViewDataAssembler : MonoBehaviour
             var positionsEntries = GetPositionsEntries(floatCulture, tradingViewData.positions, broker);
             var orderEntries = GetOrderEntries(floatCulture, tradingViewData.orders, broker);
 
-            firstEntryTime = historyEntries.OrderBy(entry => entry.placingTime).FirstOrDefault().placingTime;
+            if (historyEntries.Count > 0)
+            {
+                firstEntryTime = historyEntries.OrderBy(entry => entry.placingTime).FirstOrDefault().placingTime;
+            }
 
             foreach (var historyEntry in historyEntries)
             {
@@ -294,13 +297,16 @@ public class TradingViewDataAssembler : MonoBehaviour
         }
         else if (broker == Broker.InteractiveBrokers)
         {
-            var entries = GetInteractiveBrokersEntries(floatCulture, interactiveBrokersData.trades);
-            var interactiveBrokersPositionsEntries = GetInteractiveBrokersPositionsEntries(floatCulture, interactiveBrokersData.positions);
-            // var orderEntries = GetOrderEntries(floatCulture, tradingViewData.orders, broker);
+            var ibTradesEntries = GetIBTradesEntries(floatCulture, interactiveBrokersData.trades);
+            // var ibOrdersEntries = GetIBOrderEntries(floatCulture, interactiveBrokersData.trades);
+            var ibPositionsEntries = GetIBPositionsEntries(floatCulture, interactiveBrokersData.positions);
             //
-            firstEntryTime = entries.OrderBy(entry => entry.closingTime).FirstOrDefault().closingTime;
-            
-            foreach (var listEntry in entries)
+            if (ibTradesEntries.Count > 0)
+            {
+                firstEntryTime = ibTradesEntries.OrderBy(entry => entry.closingTime).FirstOrDefault().closingTime;
+            }
+
+            foreach (var listEntry in ibTradesEntries)
             {
                 // look to which trade entry belongs:
                 var currentTrade = trades.FirstOrDefault(trade => !trade.TradeCompleted && trade.symbol == listEntry.symbol);
@@ -345,7 +351,7 @@ public class TradingViewDataAssembler : MonoBehaviour
                         var entryOrder = listEntry.GetOrder();
                         currentTrade.entries.Add(entryOrder);
                 
-                        // Stop Loss + Price Target for IBKR:
+                        // Stop Loss + Price Target:
                         // TODO: filter cancelled / filled / working somehow? On the other hand then as soon as trade completed PT and SL wouldn't be available anymore...
                         // var relevantEntries = orderEntries.Where(entry => entry.symbol == listEntry.symbol && entry.time >= listEntry.closingTime).ToList();
                         // var priceTargets = relevantEntries.Where(entry => entry.side != listEntry.side).ToList();
@@ -743,7 +749,7 @@ public class TradingViewDataAssembler : MonoBehaviour
     #endregion
 
     #region Interactive Brokers
-    class InteractiveBrokersEntry
+    class IBTradeEntry
     {
         public string symbol;
         public Side side;
@@ -764,10 +770,10 @@ public class TradingViewDataAssembler : MonoBehaviour
         }
     }
 
-    List<InteractiveBrokersEntry> GetInteractiveBrokersEntries(CultureInfo floatCulture, List<Dictionary<string, string>> trades)
+    List<IBTradeEntry> GetIBTradesEntries(CultureInfo floatCulture, List<Dictionary<string, string>> trades)
     {
         var sb = new StringBuilder();
-        var interactiveBrokersEntries = new List<InteractiveBrokersEntry>();
+        var ibTradeEntries = new List<IBTradeEntry>();
 
         foreach (var line in trades)
         {
@@ -802,16 +808,27 @@ public class TradingViewDataAssembler : MonoBehaviour
             price = Mathf.Round(price * 100f) / 100f;
         
             // Closing Time:
-            var closingTime = DateTime.Parse(line["Date/Time"]);
+            var eastern = TZ("Eastern Standard Time", "America/New_York");
+            var berlin  = TZ("W. Europe Standard Time", "Europe/Berlin");
+
+            // Your input has NO offset, but is in ET (EDT/EST depending on date):
+            string s = line["Date/Time"]; // e.g. "2025-10-15 13:45"
+            var etLocal = DateTime.Parse(s, CultureInfo.InvariantCulture); // Unspecified kind
+
+            // Attach the correct UTC offset for ET on that date (DST-aware)
+            var etDto = new DateTimeOffset(etLocal, eastern.GetUtcOffset(etLocal));
+
+            // Convert to Berlin (CEST/CET handled)
+            var closingTime = TimeZoneInfo.ConvertTime(etDto, berlin).DateTime;
         
             // Order Id:
             // var orderId = broker == Broker.TV_PaperTrading ? uint.Parse(line["Order ID"]) : 0;
         
             // Commission:
             var commissionString = line["Comm/Fee"];
-            var commission = commissionString != string.Empty ? float.Parse(commissionString, floatCulture) : 0.0f;
+            var commission = commissionString != string.Empty ? Mathf.Abs(float.Parse(commissionString, floatCulture)) : 0.0f;
         
-            var interactiveBrokersEntry = new InteractiveBrokersEntry
+            var interactiveBrokersEntry = new IBTradeEntry
             {
                 symbol = symbol,
                 side = side,
@@ -820,22 +837,29 @@ public class TradingViewDataAssembler : MonoBehaviour
                 closingTime = closingTime,
                 commission = commission,
             };
-            interactiveBrokersEntries.Add(interactiveBrokersEntry);
+            ibTradeEntries.Add(interactiveBrokersEntry);
         }
         
-        interactiveBrokersEntries = interactiveBrokersEntries.OrderBy(entry => entry.closingTime).ToList();
+        ibTradeEntries = ibTradeEntries.OrderBy(entry => entry.closingTime).ToList();
         
         sb.AppendLine("Symbol, Side, Amount, Price, Time");
-        foreach (InteractiveBrokersEntry interactiveBrokersEntryEntry in interactiveBrokersEntries)
+        foreach (IBTradeEntry ibTradeEntry in ibTradeEntries)
         {
-            sb.AppendLine($"{interactiveBrokersEntryEntry.symbol},{interactiveBrokersEntryEntry.side},{interactiveBrokersEntryEntry.amount},{interactiveBrokersEntryEntry.price},{interactiveBrokersEntryEntry.closingTime}");
+            sb.AppendLine($"{ibTradeEntry.symbol},{ibTradeEntry.side},{ibTradeEntry.amount},{ibTradeEntry.price},{ibTradeEntry.closingTime}");
         }
         Debug.Log(sb);
 
-        return interactiveBrokersEntries;
+        return ibTradeEntries;
     }
     
-    class InteractiveBrokersPositionsEntry
+    static TimeZoneInfo TZ(string windowsId, string ianaId)
+    {
+        // Windows uses Windows IDs, macOS/Linux/Android use IANA.
+        try { return TimeZoneInfo.FindSystemTimeZoneById(windowsId); }
+        catch { return TimeZoneInfo.FindSystemTimeZoneById(ianaId); }
+    }
+    
+    class IBPositionsEntry
     {
         public string symbol;
         public Side side;
@@ -845,10 +869,10 @@ public class TradingViewDataAssembler : MonoBehaviour
         public float amount;
     }
 
-    List<InteractiveBrokersPositionsEntry> GetInteractiveBrokersPositionsEntries(CultureInfo floatCulture, List<Dictionary<string, string>> positions)
+    List<IBPositionsEntry> GetIBPositionsEntries(CultureInfo floatCulture, List<Dictionary<string, string>> positions)
     {
         var sb = new StringBuilder();
-        var positionsEntries = new List<InteractiveBrokersPositionsEntry>();
+        var positionsEntries = new List<IBPositionsEntry>();
 
         foreach (var line in positions)
         {
@@ -871,7 +895,7 @@ public class TradingViewDataAssembler : MonoBehaviour
             // Avg Fill price:
             var entryPrice = float.Parse(line["Cost Price"], floatCulture);
 
-            var positionsEntry = new InteractiveBrokersPositionsEntry
+            var positionsEntry = new IBPositionsEntry
             {
                 symbol = symbol,
                 side = side,
@@ -892,6 +916,90 @@ public class TradingViewDataAssembler : MonoBehaviour
         Debug.Log(sb);
 
         return positionsEntries;
+    }
+    
+    // These are only to get Price Target and Stop Loss orders for Interactive Brokers Trades:
+    class IBOrderEntry
+    {
+        public string symbol;
+        public Side side;
+        public OrderType type;
+        public float amount;
+        public float limitPrice;
+        public OrderStatus status;
+        public DateTime time;
+    }
+
+    List<IBOrderEntry> GetIBOrderEntries(CultureInfo floatCulture, List<Dictionary<string, string>> ibOrders)
+    {
+        var sb = new StringBuilder();
+        var ibOrderEntries = new List<IBOrderEntry>();
+
+        foreach (var line in ibOrders)
+        {
+            // Symbol:
+            var symbol = line["Symbol"];
+
+            // Side:
+            var sideString = line["Buy/Sell"];
+            var side = sideString == "BUY" ? Side.Long : Side.Short;
+
+            // Type:
+            var type = OrderType.Limit;
+            if (line["OrderType"] != "LMT")
+            {
+                continue;
+            }
+
+            // Amount:
+            var amountString = line["Quantity"];
+            // if (amountString != null)
+            // {
+            //     var slashIndex = amountString.IndexOf('/');
+            //     if (slashIndex >= 0)
+            //     {
+            //         amountString = amountString.Substring(slashIndex + 1, amountString.Length - (slashIndex + 1));
+            //     }
+            // }
+            var amount = float.Parse(amountString, floatCulture);
+
+            // Price:
+            var priceString = line["TradePrice"];
+            var price = float.Parse(priceString, floatCulture);
+
+            // Status:
+            // TODO: THAT'S THE PROBLEM! IB ONLY SHOWS FILLED ORDERS!
+            // var statusString = line["Status"];
+            // var status = statusString == "Working" ? OrderStatus.Working : statusString == "Filled" ? OrderStatus.Filled : OrderStatus.Cancelled;
+            var status = OrderStatus.Filled;
+            
+            // Time:
+            var time = DateTime.Parse(line["OrderTime"]);
+
+            var ibOrderEntry = new IBOrderEntry
+            {
+                symbol = symbol,
+                side = side,
+                type = type,
+                amount = amount,
+                limitPrice = price,
+                status = status,
+                time = time
+            };
+
+            ibOrderEntries.Add(ibOrderEntry);
+        }
+
+        ibOrderEntries = ibOrderEntries.OrderBy(entry => entry.time).ToList();
+
+        sb.AppendLine("Symbol, Side, Order Type, Amount, Limit Price, Status, Time, Order Id");
+        foreach (var orderEntry in ibOrderEntries)
+        {
+            sb.AppendLine($"{orderEntry.symbol},{orderEntry.side},{orderEntry.type},{orderEntry.amount},{CapDecimalPlaces(orderEntry.limitPrice, floatCulture)},{orderEntry.status},{orderEntry.time}");
+        }
+        Debug.Log(sb);
+
+        return ibOrderEntries;
     }
     #endregion   
     

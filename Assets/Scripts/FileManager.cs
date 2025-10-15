@@ -16,6 +16,8 @@ public class FileManager : MonoBehaviour
     const string TV_IBKR_HISTORY_FILE_KEYWORD = "interactive-brokers-trade-history";
     const string TV_IBKR_POSITIONS_FILE_KEYWORD = "interactive-brokers-positions";
     const string TV_IBKR_ORDERS_FILE_KEYWORD = "interactive-brokers-orders-all";
+    
+    // const string INTERACTIVE_BROKERS_ORDERS_FILE_KEYWORD = "TradingJournal_-_Orders";
 
     public bool OpenFiles(out TradingViewData tradingViewData, out InteractiveBrokersData interactiveBrokersData, string interactiveBrokersUserId, UIFeedback uiFeedback)
     {
@@ -65,7 +67,6 @@ public class FileManager : MonoBehaviour
             var newestPositionsFile = positionsFiles.OrderByDescending(entry => entry.time).FirstOrDefault();
             var newestOrdersFile = ordersFiles.OrderByDescending(entry => entry.time).FirstOrDefault();
 
-
             if (newestHistoryFile == null || newestPositionsFile == null || (newestOrdersFile == null && broker == Broker.TV_IBKR))
             {
                 uiFeedback.FailedConversion("Missing Files!", "At least one of the required CSV files is missing in the selected folder.");
@@ -104,74 +105,79 @@ public class FileManager : MonoBehaviour
         }
         else if (broker == Broker.InteractiveBrokers)
         {
-            var fileKeyword = interactiveBrokersUserId;
+            var ibFileKeyword = interactiveBrokersUserId;
+            // var ibOrdersKeyword = INTERACTIVE_BROKERS_ORDERS_FILE_KEYWORD;
             
-            var files = new List<FileInfo>();
+            var ibFiles = new List<FileInfo>();
+            // var ibOrdersFiles = new List<FileInfo>();
 
             DirectoryInfo directory = new DirectoryInfo(folderPath);
             var csvFiles = directory.GetFiles("*.csv");
 
             foreach (var file in csvFiles)
             {
-                if (file.Name.Contains(fileKeyword))
+                if (file.Name.Contains(ibFileKeyword))
                 {
-                    files.Add(file);
+                    ibFiles.Add(file);
                 }
+                // else if (file.Name.Contains(ibOrdersKeyword))
+                // {
+                //     ibOrdersFiles.Add(file);
+                // }
             }
 
-            var newestFile = files.OrderByDescending(entry => entry.CreationTimeUtc).FirstOrDefault();
+            var newestIbFile = ibFiles.OrderByDescending(entry => entry.CreationTimeUtc).FirstOrDefault();
+            // var newestIbOrdersFile = ibOrdersFiles.OrderByDescending(entry => entry.CreationTimeUtc).FirstOrDefault();
             
-            if (newestFile == null)
+            if (newestIbFile == null /* || newestIbOrdersFile == null */)
             {
                 uiFeedback.FailedConversion("Missing File!", "The required CSV file is missing in the selected folder.");
                 Debug.LogError("The required CSV file is missing in the selected folder.");
             }
 
-            var interactiveBrokersFileName = newestFile.Name;
+            var ibFileName = newestIbFile.Name;
+            // var ibOrdersFileName = newestIbOrdersFile.Name;
 
             try
             {
-                var interactiveBrokersCsv = File.ReadAllText(folderPath + Path.DirectorySeparatorChar + interactiveBrokersFileName);
+                var ibCsv = File.ReadAllText(folderPath + Path.DirectorySeparatorChar + ibFileName);
+                // var ibOrdersCsv = File.ReadAllText(folderPath + Path.DirectorySeparatorChar + ibOrdersFileName);
                 
-                const string tradesStartText = "Trades,Header";
-                const string tradesEndText   = "Deposits & Withdrawals,Header";
-                const string positionsStartText = "Open Positions,Header";
-                const string positionsEndText = "Forex Balances,Header";
+                const string TRADES_START = "Trades,Header";
+                const string TRADES_END   = "Trades,Total";
+                const string POSITIONS_START = "Open Positions,Header";
+                const string POSITIONS_END = "Forex Balances,Header";
                 
-                var tradesStartIndex = interactiveBrokersCsv.IndexOf(tradesStartText, StringComparison.Ordinal);
+                var tradesStartIndex = ibCsv.IndexOf(TRADES_START, StringComparison.Ordinal);
                 if (tradesStartIndex < 0)
                 {
-                    throw new InvalidOperationException("tradesStartText not found.");
+                    throw new InvalidOperationException("TRADES_START not found.");
                 }
 
-                var tradesEndIndex = interactiveBrokersCsv.IndexOf(tradesEndText, tradesStartIndex + tradesStartText.Length, StringComparison.Ordinal);
+                var tradesEndIndex = ibCsv.IndexOf(TRADES_END, tradesStartIndex + TRADES_START.Length, StringComparison.Ordinal);
                 if (tradesEndIndex < 0)
                 {
-                    tradesEndIndex = interactiveBrokersCsv.Length;
+                    tradesEndIndex = ibCsv.Length;
                 }
                 
-                var positionsStartIndex = interactiveBrokersCsv.IndexOf(positionsStartText, StringComparison.Ordinal);
-                if (positionsStartIndex < 0)
-                {
-                    throw new InvalidOperationException("positionsStartText not found.");
-                }
-
-                var positionsEndIndex = interactiveBrokersCsv.IndexOf(positionsEndText, positionsStartIndex + positionsStartText.Length, StringComparison.Ordinal);
+                var positionsStartIndex = ibCsv.IndexOf(POSITIONS_START, StringComparison.Ordinal);
+                var positionsEndIndex = ibCsv.IndexOf(POSITIONS_END, positionsStartIndex + POSITIONS_START.Length, StringComparison.Ordinal);
                 if (positionsEndIndex < 0)
                 {
-                    positionsEndIndex = interactiveBrokersCsv.Length;
+                    positionsEndIndex = ibCsv.Length;
                 }
 
-                var ibTradesCsv = interactiveBrokersCsv.Substring(tradesStartIndex, tradesEndIndex - tradesStartIndex);
-                var ibPositionsCsv = interactiveBrokersCsv.Substring(positionsStartIndex, positionsEndIndex - positionsStartIndex);
-                Debug.Log(ibPositionsCsv);
+                var ibTradesCsv = ibCsv.Substring(tradesStartIndex, tradesEndIndex - tradesStartIndex);
+                var ibPositionsCsv = positionsStartIndex < 0 ? "" : ibCsv.Substring(positionsStartIndex, positionsEndIndex - positionsStartIndex);
                 
                 interactiveBrokersData = new InteractiveBrokersData
                 {
                     trades = CsvReader.Read(ibTradesCsv),
                     positions = CsvReader.Read(ibPositionsCsv),
+                    // orders = CsvReader.Read(ibOrdersCsv),
                     
-                    fileName = interactiveBrokersFileName
+                    ibFileName = ibFileName,
+                    // ibOrdersFileName = ibOrdersFileName
                 };
             }
             catch
@@ -231,7 +237,9 @@ public class FileManager : MonoBehaviour
     {
         public List<Dictionary<string, string>> trades;
         public List<Dictionary<string, string>> positions;
+        // public List<Dictionary<string, string>> orders;
 
-        public string fileName;
+        public string ibFileName;
+        // public string ibOrdersFileName;
     }
 }

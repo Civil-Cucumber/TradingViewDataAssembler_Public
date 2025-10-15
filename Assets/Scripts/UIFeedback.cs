@@ -95,7 +95,7 @@ public class UIFeedback : MonoBehaviour
 
         if ((Broker)brokerIndex == Broker.InteractiveBrokers)
         {
-            sb.AppendLine($"{interactiveBrokersData.fileName}");
+            sb.AppendLine($"{interactiveBrokersData.ibFileName}");
         }
         else
         {
