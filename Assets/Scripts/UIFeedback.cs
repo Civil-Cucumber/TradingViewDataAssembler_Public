@@ -12,7 +12,6 @@ public class UIFeedback : MonoBehaviour
 {
     // Status:
     public TMP_Text statusText;
-    public TMP_Text previewText;
 
     // Folder:
     public GameObject invalidFolderText;
@@ -119,13 +118,19 @@ public class UIFeedback : MonoBehaviour
         {
             sb.AppendLine($"{tradingViewData.historyFileName}");
             sb.AppendLine($"{tradingViewData.positionsFileName}");
-            sb.AppendLine($"{tradingViewData.ordersFileName}");
+
+            if (tradingViewData.ordersFileName != "")
+            {
+                sb.AppendLine($"{tradingViewData.ordersFileName}");
+            }
         }
         sb.AppendLine("<color=white>");
         sb.AppendLine("<size=50%>Click or press Esc / Return / Space to close the app.");
+        
+        sb.AppendLine("<size=33%><color=#ACACAC><align=\"left\">");
+        sb.Append(debugText);
 
         statusText.text = sb.ToString();
-        previewText.text = debugText;
 
         var entry = new Entry
         {
@@ -148,8 +153,10 @@ public class UIFeedback : MonoBehaviour
         sb.AppendLine(errorMessage);
         sb.AppendLine();
         
+        sb.AppendLine("<size=33%><color=#ACACAC><align=\"left\">");
+        sb.AppendLine("(Please read https://github.com/Civil-Cucumber/TradingViewDataAssembler_Public to make sure you follow all steps as described.)");
+        
         statusText.text = sb.ToString();
-        previewText.text = "(Please read https://github.com/Civil-Cucumber/TradingViewDataAssembler_Public to make sure you follow all steps as described.)";
     }
 
     IEnumerator CloseOnInput()
