@@ -26,6 +26,7 @@ public class UIFeedback : MonoBehaviour
     public Toggle ibkr;
     public Toggle ibPaper;
     public Toggle ibLive;
+    public TMP_Text ibActivityStatementText;
     
     // ConfigManager:
     public ConfigManager configManager;
@@ -33,10 +34,17 @@ public class UIFeedback : MonoBehaviour
     bool isClosing = false;
 
     // Folder:
-    public void InitializeInput(bool hasIbPaperUserId, bool hasIbLiveUserId)
+    public void InitializeInput()
     {
+        var hasIbPaperUserId = !string.IsNullOrEmpty(configManager.Config.ibPaperUserId);
+        var hasIbLiveUserId = !string.IsNullOrEmpty(configManager.Config.ibLiveUserId);
+        
         ibPaper.gameObject.SetActive(hasIbPaperUserId);
         ibLive.gameObject.SetActive(hasIbLiveUserId);
+        if (!hasIbPaperUserId && !hasIbLiveUserId)
+        {
+            ibActivityStatementText.color = new Color(0,0,0,0);
+        }
         
         var folderPath = PlayerPrefs.GetString(SAVED_FOLDER_KEY);
         if (folderPath != "")
@@ -46,16 +54,20 @@ public class UIFeedback : MonoBehaviour
         OnUpdateFolderPath(folderPath);
 
         var brokerIndex = PlayerPrefs.GetInt(SAVED_BROKER_INDEX);
-        if (((Broker)brokerIndex == Broker.IB_Paper && !hasIbPaperUserId) 
-            || ((Broker)brokerIndex == Broker.IB_Live && !hasIbLiveUserId))
-        {
-            brokerIndex = (int)Broker.TV_PaperTrading;
-        }
         OnUpdateBroker(brokerIndex);
     }
 
     public void OnUpdateBroker(int brokerIndex)
     {
+        var hasIbPaperUserId = !string.IsNullOrEmpty(configManager.Config.ibPaperUserId);
+        var hasIbLiveUserId = !string.IsNullOrEmpty(configManager.Config.ibLiveUserId);
+        
+        if (((Broker)brokerIndex == Broker.IB_Paper && !hasIbPaperUserId) 
+            || ((Broker)brokerIndex == Broker.IB_Live && !hasIbLiveUserId))
+        {
+            brokerIndex = (int)Broker.TV_PaperTrading;
+        }
+        
         toggleGroup.SetAllTogglesOff(false);
         switch (brokerIndex)
         {

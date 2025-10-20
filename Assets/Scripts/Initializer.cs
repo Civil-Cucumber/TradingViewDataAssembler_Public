@@ -17,9 +17,8 @@ public class Initializer : MonoBehaviour
         {
             uiFeedback.FailedConversion("Config issue!", "Something went wrong while accessing/reading SettingsConfig.json");
         }
-        var hasIbPaperUserId = !string.IsNullOrEmpty(configManager.Config.ibPaperUserId);
-        var hasIbLiveUserId = !string.IsNullOrEmpty(configManager.Config.ibLiveUserId);
-        uiFeedback.InitializeInput(hasIbPaperUserId, hasIbLiveUserId);
+
+        uiFeedback.InitializeInput();
         ConvertData();
     }
 
