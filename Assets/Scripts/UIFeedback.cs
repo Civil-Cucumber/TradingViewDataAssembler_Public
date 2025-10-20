@@ -24,7 +24,8 @@ public class UIFeedback : MonoBehaviour
     public ToggleGroup toggleGroup;
     public Toggle paperTrading;
     public Toggle ibkr;
-    public Toggle interactiveBrokers;
+    public Toggle ibPaper;
+    public Toggle ibLive;
     
     // ConfigManager:
     public ConfigManager configManager;
@@ -32,9 +33,10 @@ public class UIFeedback : MonoBehaviour
     bool isClosing = false;
 
     // Folder:
-    public void InitializeInput(bool hasInteractiveBrokersId)
+    public void InitializeInput(bool hasIbPaperUserId, bool hasIbLiveUserId)
     {
-        interactiveBrokers.gameObject.SetActive(hasInteractiveBrokersId);
+        ibPaper.gameObject.SetActive(hasIbPaperUserId);
+        ibLive.gameObject.SetActive(hasIbLiveUserId);
         
         var folderPath = PlayerPrefs.GetString(SAVED_FOLDER_KEY);
         if (folderPath != "")
@@ -44,7 +46,8 @@ public class UIFeedback : MonoBehaviour
         OnUpdateFolderPath(folderPath);
 
         var brokerIndex = PlayerPrefs.GetInt(SAVED_BROKER_INDEX);
-        if ((Broker)brokerIndex == Broker.InteractiveBrokers && !hasInteractiveBrokersId)
+        if (((Broker)brokerIndex == Broker.IB_Paper && !hasIbPaperUserId) 
+            || ((Broker)brokerIndex == Broker.IB_Live && !hasIbLiveUserId))
         {
             brokerIndex = (int)Broker.TV_PaperTrading;
         }
@@ -63,8 +66,11 @@ public class UIFeedback : MonoBehaviour
             case (int)Broker.TV_IBKR:
                 ibkr.SetIsOnWithoutNotify(true);
                 break;
-            case (int)Broker.InteractiveBrokers:
-                interactiveBrokers.SetIsOnWithoutNotify(true);
+            case (int)Broker.IB_Paper:
+                ibPaper.SetIsOnWithoutNotify(true);
+                break;
+            case (int)Broker.IB_Live:
+                ibLive.SetIsOnWithoutNotify(true);
                 break;
         }
         PlayerPrefs.SetInt(SAVED_BROKER_INDEX, brokerIndex);
@@ -93,7 +99,7 @@ public class UIFeedback : MonoBehaviour
         sb.AppendLine("Copied to clipboard!");
         sb.AppendLine("<size=35%><color=#ABABAB>");
 
-        if ((Broker)brokerIndex == Broker.InteractiveBrokers)
+        if ((Broker)brokerIndex == Broker.IB_Paper || (Broker)brokerIndex == Broker.IB_Live)
         {
             sb.AppendLine($"{interactiveBrokersData.ibFileName}");
         }
@@ -159,8 +165,11 @@ public class UIFeedback : MonoBehaviour
                 case Broker.TV_IBKR:
                     tradingJournalURL = configManager.Config.tvIbkrJournalUrl;
                     break;
-                case Broker.InteractiveBrokers:
-                    tradingJournalURL = configManager.Config.interactiveBrokersJournalUrl;
+                case Broker.IB_Paper:
+                    tradingJournalURL = configManager.Config.ibPaperJournalUrl;
+                    break;
+                case Broker.IB_Live:
+                    tradingJournalURL = configManager.Config.ibLiveJournalUrl;
                     break;
             }
             if (tradingJournalURL != string.Empty)

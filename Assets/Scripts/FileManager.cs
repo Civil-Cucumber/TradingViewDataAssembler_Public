@@ -19,7 +19,7 @@ public class FileManager : MonoBehaviour
     
     // const string INTERACTIVE_BROKERS_ORDERS_FILE_KEYWORD = "TradingJournal_-_Orders";
 
-    public bool OpenFiles(out TradingViewData tradingViewData, out InteractiveBrokersData interactiveBrokersData, string interactiveBrokersUserId, UIFeedback uiFeedback)
+    public bool OpenFiles(out TradingViewData tradingViewData, out InteractiveBrokersData interactiveBrokersData, string ibPaperUserId, string ibLiveUserId, UIFeedback uiFeedback)
     {
         var folderPath = PlayerPrefs.GetString(SAVED_FOLDER_KEY);
         tradingViewData = null;
@@ -103,9 +103,9 @@ public class FileManager : MonoBehaviour
                 return false;
             }
         }
-        else if (broker == Broker.InteractiveBrokers)
+        else if (broker is Broker.IB_Paper or Broker.IB_Live)
         {
-            var ibFileKeyword = interactiveBrokersUserId;
+            var ibFileKeyword = broker is Broker.IB_Paper ? ibPaperUserId : ibLiveUserId;
             // var ibOrdersKeyword = INTERACTIVE_BROKERS_ORDERS_FILE_KEYWORD;
             
             var ibFiles = new List<FileInfo>();
@@ -146,7 +146,7 @@ public class FileManager : MonoBehaviour
                 const string TRADES_START = "Trades,Header";
                 const string TRADES_END   = "Trades,Total";
                 const string POSITIONS_START = "Open Positions,Header";
-                const string POSITIONS_END = "Forex Balances,Header";
+                const string POSITIONS_END = "Open Positions,Total";
                 
                 var tradesStartIndex = ibCsv.IndexOf(TRADES_START, StringComparison.Ordinal);
                 if (tradesStartIndex < 0)

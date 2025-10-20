@@ -295,7 +295,7 @@ public class TradingViewDataAssembler : MonoBehaviour
                 }
             }
         }
-        else if (broker == Broker.InteractiveBrokers)
+        else if (broker is Broker.IB_Paper or Broker.IB_Live)
         {
             var ibTradesEntries = GetIBTradesEntries(floatCulture, interactiveBrokersData.trades);
             // var ibOrdersEntries = GetIBOrderEntries(floatCulture, interactiveBrokersData.trades);

@@ -1,6 +1,8 @@
 {
 	"tvPaperTradingJournalUrl": "",
 	"tvIbkrJournalUrl": "",
-	"interactiveBrokersUserId": "",
-	"interactiveBrokersJournalUrl": ""
+	"ibPaperUserId": "",
+	"ibPaperJournalUrl": "",
+	"ibLiveUserId": "",
+	"ibLiveJournalUrl": ""
 }

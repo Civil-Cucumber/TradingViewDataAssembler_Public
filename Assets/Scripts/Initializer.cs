@@ -17,14 +17,15 @@ public class Initializer : MonoBehaviour
         {
             uiFeedback.FailedConversion("Config issue!", "Something went wrong while accessing/reading SettingsConfig.json");
         }
-        var hasInteractiveBrokersUserId = !string.IsNullOrEmpty(configManager.Config.interactiveBrokersUserId);
-        uiFeedback.InitializeInput(hasInteractiveBrokersUserId);
+        var hasIbPaperUserId = !string.IsNullOrEmpty(configManager.Config.ibPaperUserId);
+        var hasIbLiveUserId = !string.IsNullOrEmpty(configManager.Config.ibLiveUserId);
+        uiFeedback.InitializeInput(hasIbPaperUserId, hasIbLiveUserId);
         ConvertData();
     }
 
     public void ConvertData()
     {
-        var loadSuccess = fileManager.OpenFiles(out var tradingViewData, out var interactiveBrokersData, configManager.Config.interactiveBrokersUserId, uiFeedback);
+        var loadSuccess = fileManager.OpenFiles(out var tradingViewData, out var interactiveBrokersData, configManager.Config.ibPaperUserId, configManager.Config.ibLiveUserId, uiFeedback);
         if (loadSuccess)
         {
             try
