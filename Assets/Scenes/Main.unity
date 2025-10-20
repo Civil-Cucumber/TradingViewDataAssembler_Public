@@ -1359,7 +1359,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 0
     m_VerticalOverflow: 0
     m_LineSpacing: 1
-  m_Text: Paper Trading
+  m_Text: 'TV: Paper Trading'
 --- !u!222 &860293065
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -1710,7 +1710,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 0
     m_VerticalOverflow: 0
     m_LineSpacing: 1
-  m_Text: IB Live
+  m_Text: 'IB: Live'
 --- !u!222 &1052835693
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -3185,7 +3185,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 0
     m_VerticalOverflow: 0
     m_LineSpacing: 1
-  m_Text: IBKR
+  m_Text: 'TV: IBKR'
 --- !u!222 &1423279953
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -4289,7 +4289,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 0
     m_VerticalOverflow: 0
     m_LineSpacing: 1
-  m_Text: IB Paper
+  m_Text: 'IB: Paper'
 --- !u!222 &2037631667
 CanvasRenderer:
   m_ObjectHideFlags: 0
