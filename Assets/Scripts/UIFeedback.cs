@@ -21,8 +21,9 @@ public class UIFeedback : MonoBehaviour
 
     // Broker:
     public ToggleGroup toggleGroup;
-    public Toggle paperTrading;
-    public Toggle ibkr;
+    public Toggle tvPaperTrading;
+    public Toggle tvIbkrPaper;
+    public Toggle tvIbkr;
     public Toggle ibPaper;
     public Toggle ibLive;
     public TMP_Text ibActivityStatementText;
@@ -72,10 +73,13 @@ public class UIFeedback : MonoBehaviour
         {
             default:
             case (int)Broker.TV_PaperTrading:
-                paperTrading.SetIsOnWithoutNotify(true);
+                tvPaperTrading.SetIsOnWithoutNotify(true);
+                break;
+            case (int)Broker.TV_IBKR_Paper:
+                tvIbkrPaper.SetIsOnWithoutNotify(true);
                 break;
             case (int)Broker.TV_IBKR:
-                ibkr.SetIsOnWithoutNotify(true);
+                tvIbkr.SetIsOnWithoutNotify(true);
                 break;
             case (int)Broker.IB_Paper:
                 ibPaper.SetIsOnWithoutNotify(true);
@@ -181,14 +185,17 @@ public class UIFeedback : MonoBehaviour
                 case Broker.TV_PaperTrading:
                     tradingJournalURL = configManager.Config.tvPaperTradingJournalUrl;
                     break;
+                case Broker.TV_IBKR_Paper:
+                    tradingJournalURL = configManager.Config.ibkrPaperJournalUrl;
+                    break;
                 case Broker.TV_IBKR:
-                    tradingJournalURL = configManager.Config.tvIbkrJournalUrl;
+                    tradingJournalURL = configManager.Config.ibkrJournalUrl;
                     break;
                 case Broker.IB_Paper:
-                    tradingJournalURL = configManager.Config.ibPaperJournalUrl;
+                    tradingJournalURL = configManager.Config.ibkrPaperJournalUrl;
                     break;
                 case Broker.IB_Live:
-                    tradingJournalURL = configManager.Config.ibLiveJournalUrl;
+                    tradingJournalURL = configManager.Config.ibkrJournalUrl;
                     break;
             }
             if (tradingJournalURL != string.Empty)

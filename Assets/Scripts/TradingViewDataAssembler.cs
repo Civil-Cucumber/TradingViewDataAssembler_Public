@@ -144,7 +144,7 @@ public class TradingViewDataAssembler : MonoBehaviour
         var trades = new List<Trade>();
         var firstEntryTime = DateTime.MinValue;
 
-        if (broker == Broker.TV_PaperTrading || broker == Broker.TV_IBKR)
+        if (broker == Broker.TV_PaperTrading || broker == Broker.TV_IBKR_Paper || broker == Broker.TV_IBKR)
         {
             var historyEntries = GetHistoryEntries(floatCulture, tradingViewData.history, broker);
             var positionsEntries = GetPositionsEntries(floatCulture, tradingViewData.positions, broker);
@@ -557,8 +557,8 @@ public class TradingViewDataAssembler : MonoBehaviour
             var orderId = broker == Broker.TV_PaperTrading ? uint.Parse(line["Order ID"]) : 0;
 
             // Commission:
-            var commissionString = broker == Broker.TV_IBKR ? line["Commission"] : string.Empty;
-            var commission = broker == Broker.TV_IBKR && commissionString != string.Empty ? float.Parse(commissionString, floatCulture) : 0.0f;
+            var commissionString = (broker == Broker.TV_IBKR_Paper || broker == Broker.TV_IBKR) ? line["Commission"] : string.Empty;
+            var commission = (broker == Broker.TV_IBKR_Paper || broker == Broker.TV_IBKR) && commissionString != string.Empty ? float.Parse(commissionString, floatCulture) : 0.0f;
 
             var historyEntry = new HistoryEntry
             {
@@ -671,7 +671,7 @@ public class TradingViewDataAssembler : MonoBehaviour
         var sb = new StringBuilder();
         var orderEntries = new List<OrderEntry>();
 
-        if (broker != Broker.TV_IBKR || orders == null)
+        if ((broker != Broker.TV_IBKR_Paper && broker != Broker.TV_IBKR) || orders == null)
         {
             return orderEntries;
         }

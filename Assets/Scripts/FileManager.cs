@@ -34,7 +34,7 @@ public class FileManager : MonoBehaviour
         }
 
         var broker = (Broker)PlayerPrefs.GetInt(SAVED_BROKER_INDEX, 0);
-        if (broker == Broker.TV_PaperTrading || broker == Broker.TV_IBKR)
+        if (broker == Broker.TV_PaperTrading || broker == Broker.TV_IBKR_Paper || broker == Broker.TV_IBKR)
         {
             var historyFileKeyword = broker == Broker.TV_PaperTrading ? TV_PT_HISTORY_FILE_KEYWORD : TV_IBKR_HISTORY_FILE_KEYWORD;
             var positionsFileKeyword = broker == Broker.TV_PaperTrading ? TV_PT_POSITIONS_FILE_KEYWORD : TV_IBKR_POSITIONS_FILE_KEYWORD;
@@ -67,7 +67,7 @@ public class FileManager : MonoBehaviour
             var newestPositionsFile = positionsFiles.OrderByDescending(entry => entry.time).FirstOrDefault();
             var newestOrdersFile = ordersFiles.OrderByDescending(entry => entry.time).FirstOrDefault();
 
-            if (newestHistoryFile == null || newestPositionsFile == null || (newestOrdersFile == null && broker == Broker.TV_IBKR))
+            if (newestHistoryFile == null || newestPositionsFile == null || (newestOrdersFile == null && (broker == Broker.TV_IBKR || broker == Broker.TV_IBKR_Paper)))
             {
                 uiFeedback.FailedConversion("Missing Files!", "At least one of the required CSV files is missing in the selected folder.");
                 Debug.LogError("At least one of the required CSV files is missing in the selected folder.");
@@ -76,7 +76,7 @@ public class FileManager : MonoBehaviour
             var historyFileName = newestHistoryFile.name;
             var positionsFileName = newestPositionsFile.name;
             // Orders file is only necessary for IBKR:
-            var orderFileName = newestOrdersFile != null && broker == Broker.TV_IBKR ? newestOrdersFile.name : string.Empty;
+            var orderFileName = newestOrdersFile != null && (broker == Broker.TV_IBKR || broker == Broker.TV_IBKR_Paper) ? newestOrdersFile.name : string.Empty;
 
             try
             {
