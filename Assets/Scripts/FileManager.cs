@@ -154,14 +154,14 @@ public class FileManager : MonoBehaviour
                     throw new InvalidOperationException("TRADES_START not found.");
                 }
 
-                var tradesEndIndex = ibCsv.IndexOf(TRADES_END, tradesStartIndex + TRADES_START.Length, StringComparison.Ordinal);
+                var tradesEndIndex = ibCsv.LastIndexOf(TRADES_END, StringComparison.Ordinal);
                 if (tradesEndIndex < 0)
                 {
                     tradesEndIndex = ibCsv.Length;
                 }
                 
                 var positionsStartIndex = ibCsv.IndexOf(POSITIONS_START, StringComparison.Ordinal);
-                var positionsEndIndex = ibCsv.IndexOf(POSITIONS_END, positionsStartIndex + POSITIONS_START.Length, StringComparison.Ordinal);
+                var positionsEndIndex = ibCsv.LastIndexOf(POSITIONS_END, StringComparison.Ordinal);
                 if (positionsEndIndex < 0)
                 {
                     positionsEndIndex = ibCsv.Length;
