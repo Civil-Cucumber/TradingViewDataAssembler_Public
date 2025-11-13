@@ -59,8 +59,8 @@ public static class OptionsFormatter
             }
         }
         
-        var month = expiry.ToString("MMM", CultureInfo.InvariantCulture); // "Oct"
-        var day   = expiry.ToString("dd",  CultureInfo.InvariantCulture); // "10"
+        var month = expiry.ToString("MMM", CultureInfo.InvariantCulture); // "Nov"
+        var day   = expiry.ToString("dd",  CultureInfo.InvariantCulture); // "07"
         var year  = expiry.ToString("yy",  CultureInfo.InvariantCulture); // "25"
 
         string type;
