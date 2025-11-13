@@ -457,6 +457,8 @@ public class TradingViewDataAssembler : MonoBehaviour
             {
                 exitTradeString = "";
             }
+            trade.symbol = OptionsFormatter.FormatOption(trade.symbol);
+            
             sb.AppendLine($"{trade.symbol},{trade.side},{trade.StartTradeTime},{CapDecimalPlaces(trade.AvgEntryPrice, floatCulture)},{FloatToString(trade.TotalEntryAmount, floatCulture)},{CapDecimalPlaces(trade.LastStopLoss, floatCulture)},{CapDecimalPlaces(trade.LastPriceTarget, floatCulture)},{exitTradeString},{CapDecimalPlaces(trade.AvgExitPrice, floatCulture)},{FloatToString(trade.TotalExitAmount, floatCulture)},{trade.entries.Count},{trade.Adds},{trade.exits.Count},{trade.PartialCloses},{CapDecimalPlaces(trade.TotalCommissions, floatCulture)}");
         }
         Debug.Log(sb);
