@@ -71,7 +71,6 @@ public class FileManager : MonoBehaviour
             {
                 uiFeedback.FailedConversion("Missing Files!", "At least one of the required CSV files is missing in the selected folder.");
                 Debug.LogError("At least one of the required CSV files is missing in the selected folder.");
-                tradingViewData = null;
             
                 return false;
             }
@@ -136,6 +135,8 @@ public class FileManager : MonoBehaviour
             {
                 uiFeedback.FailedConversion("Missing File!", "The required CSV file is missing in the selected folder.");
                 Debug.LogError("The required CSV file is missing in the selected folder.");
+            
+                return false;
             }
 
             var ibFileName = newestIbFile.Name;
