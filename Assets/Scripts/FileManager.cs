@@ -10,7 +10,7 @@ public class FileManager : MonoBehaviour
     public const string SAVED_FOLDER_KEY = "folderPath";
     public const string SAVED_BROKER_INDEX = "brokerIndex";
 
-    const string TV_PT_HISTORY_FILE_KEYWORD = "paper-trading-history-all";
+    const string TV_PT_HISTORY_FILE_KEYWORD = "paper-trading-order-history-all";
     const string TV_PT_POSITIONS_FILE_KEYWORD = "paper-trading-positions";
 
     const string TV_IBKR_HISTORY_FILE_KEYWORD = "interactive-brokers-trade-history";
@@ -71,6 +71,9 @@ public class FileManager : MonoBehaviour
             {
                 uiFeedback.FailedConversion("Missing Files!", "At least one of the required CSV files is missing in the selected folder.");
                 Debug.LogError("At least one of the required CSV files is missing in the selected folder.");
+                tradingViewData = null;
+            
+                return false;
             }
 
             var historyFileName = newestHistoryFile.name;
