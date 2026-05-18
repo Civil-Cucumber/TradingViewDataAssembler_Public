@@ -529,14 +529,14 @@ public class TradingViewDataAssembler : MonoBehaviour
             var type = broker == Broker.TV_PaperTrading ? Enum.Parse<OrderType>(typeString) : OrderType.IBKR;
 
             // Amount:
-            var qty = line["Qty"];
+            var qty = line["Quantity"];
             qty = qty.Replace(" ", ""); // TradingView adds space instead of comma for numbers > 999, therefore need to remove it
             var amount = float.Parse(qty, floatCulture);
 
             // Price:
-            var fillPriceString = line["Fill Price"];
+            var fillPriceString = line["Fill price"];
             fillPriceString = fillPriceString.Replace(" ", ""); // TradingView adds space instead of comma for numbers > 999, therefore need to remove it
-            var priceString = broker == Broker.TV_PaperTrading ? line["Limit Price"] : "";
+            var priceString = broker == Broker.TV_PaperTrading ? line["Limit price"] : "";
             priceString = priceString.Replace(" ", ""); // TradingView adds space instead of comma for numbers > 999, therefore need to remove it
             
             // Ignore cancelled stop & market orders (TradingView doesn't export the price for (cancelled) Stop Loss orders, and market orders don't have a price anyways - which would lead to errors further below. Therefore skip these types of orders):
@@ -550,10 +550,10 @@ public class TradingViewDataAssembler : MonoBehaviour
             price = Mathf.Round(price * 100f) / 100f;
 
             // Placing Time:
-            var placingTime = broker == Broker.TV_PaperTrading ? DateTime.Parse(line["Placing Time"]) : DateTime.Parse(line["Time"]);
+            var placingTime = broker == Broker.TV_PaperTrading ? DateTime.Parse(line["Placing time"]) : DateTime.Parse(line["Time"]);
 
             // Closing Time:
-            var closingTime = broker == Broker.TV_PaperTrading ? DateTime.Parse(line["Closing Time"]) : DateTime.Parse(line["Time"]);
+            var closingTime = broker == Broker.TV_PaperTrading ? DateTime.Parse(line["Closing time"]) : DateTime.Parse(line["Time"]);
 
             // Order Id:
             var orderId = broker == Broker.TV_PaperTrading ? uint.Parse(line["Order ID"]) : 0;
@@ -618,7 +618,7 @@ public class TradingViewDataAssembler : MonoBehaviour
             var side = line["Side"] == "Long" ? Side.Long : Side.Short;
 
             // Avg Fill price:
-            var entryPrice = float.Parse(broker == Broker.TV_PaperTrading ? line["Avg Fill Price"] : line["Avg Price"], floatCulture);
+            var entryPrice = float.Parse(broker == Broker.TV_PaperTrading ? line["Avg Fill Price"] : line["Avg price"], floatCulture);
 
             // Price target:
             var priceTarget = 0.0f;
@@ -629,7 +629,7 @@ public class TradingViewDataAssembler : MonoBehaviour
             var hasStopLoss = broker == Broker.TV_PaperTrading && float.TryParse(line["Stop Loss"], NumberStyles.Float, floatCulture, out stopLoss);
 
             // Amount:
-            var amount = float.Parse(line["Qty"], floatCulture);
+            var amount = broker == Broker.TV_PaperTrading ? float.Parse(line["Qty"], floatCulture) : float.Parse(line["Quantity"], floatCulture);
 
             var positionsEntry = new PositionsEntry
             {
@@ -688,7 +688,7 @@ public class TradingViewDataAssembler : MonoBehaviour
             var side = sideString == "Buy" ? Side.Long : Side.Short;
 
             // Type:
-            if (Enum.TryParse<OrderType>(line["IB Order Type"], out var type))
+            if (Enum.TryParse<OrderType>(line["IB order type"], out var type))
             {
                 if (type != OrderType.Limit)
                 {
@@ -713,7 +713,7 @@ public class TradingViewDataAssembler : MonoBehaviour
             var amount = float.Parse(amountString, floatCulture);
 
             // Price:
-            var priceString = line["Limit Price"];
+            var priceString = line["Limit price"];
             var price = float.Parse(priceString, floatCulture);
 
             // Status:
@@ -721,7 +721,7 @@ public class TradingViewDataAssembler : MonoBehaviour
             var status = statusString == "Working" ? OrderStatus.Working : statusString == "Filled" ? OrderStatus.Filled : OrderStatus.Cancelled;
 
             // Time:
-            var time = DateTime.Parse(line["Last Update Time"]);
+            var time = DateTime.Parse(line["Last update time"]);
 
             var orderEntry = new OrderEntry
             {
