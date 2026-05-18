@@ -35,7 +35,7 @@ This tool assembles your data from any of these 5 sources...
 
 ## Download:
 
-[Version 3.0](https://github.com/Civil-Cucumber/TradingViewDataAssembler_Public/releases/tag/v3.0.0)
+[Version 3.1](https://github.com/Civil-Cucumber/TradingViewDataAssembler_Public/releases/tag/v3.1.0)
 
 ### Update info:
 - From version 2.0 on 2 more columns are now exported: One that shows when was added to the position, the other when partial closes happened. This means you will likely need to adjust your Trading Journals accordingly!
